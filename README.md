@@ -97,8 +97,7 @@ warnings. In the browser devtools console, a successful boot logs
 
 ## Screenshot
 
-TODO: add a panel screenshot here after the first verified boot — floating
-tree with a couple of expanded sections and Running mode enabled.
+<img width="616" height="723" alt="image" src="https://github.com/user-attachments/assets/d05bf77c-3077-4b3d-9d6a-61ed168a75a0" />
 
 ## Development
 
