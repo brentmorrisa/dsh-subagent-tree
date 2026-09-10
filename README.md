@@ -48,7 +48,7 @@ profile's bundle layer list. Nothing else to edit.
 **From GitHub (one command):**
 
 ```sh
-dsh plugin --profile web add github:<owner>/dsh-subagent-tree
+dsh plugin --profile web add github:brentmorrisa/dsh-subagent-tree
 ```
 
 **From a local clone or path:**
