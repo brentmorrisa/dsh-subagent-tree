@@ -1,0 +1,10 @@
+# Bundle patch layer of dsh-subagent-tree. Loaded by the profile loader from
+# this package's dsh.bundle.patch declaration; `dsh plugin` reconciling runs
+# this after every earlier bundle layer. It inserts the plugin row into the
+# profile tree; the browser half rides along through the package's dsh.client
+# declaration — no separate client row is needed.
+# Do not also add the insert row manually to the profile's cordis.patch.yml:
+# double insertion double-mounts the panel and throws
+# "webserver: duplicate exact route /sgtree/snapshot" at boot.
+- insert:
+  - name: dsh-subagent-tree

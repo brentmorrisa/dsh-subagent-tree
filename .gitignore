@@ -1,0 +1,29 @@
+# dsh-subagent-tree has no build system — the committed files ARE the
+# artifacts. This list exists to keep accidental junk out.
+
+# dependencies (never present in this package; keep guarded anyway)
+node_modules/
+
+# package managers / registries
+*.tgz
+.pnpm-store/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# editor / OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# logs
+*.log
+npm-debug.log*
+
+# generated maps if someone ever builds artifacts over client.js
+*.js.map

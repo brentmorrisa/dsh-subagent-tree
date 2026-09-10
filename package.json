@@ -1,0 +1,30 @@
+{
+  "name": "dsh-subagent-tree",
+  "description": "Subagent tree panel (sgtree): persistent floating tree of delegated subagent sessions with live status dots, direct/total badges, context-occupancy rings, a Finished section per session, and a Running mode",
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/patch.yml"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "lib/patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

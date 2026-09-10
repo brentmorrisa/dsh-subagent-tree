@@ -1,0 +1,180 @@
+# AGENTS.md — working on dsh-subagent-tree
+
+Operational knowledge for agents (and humans) building, editing, installing,
+and validating this plugin. Read this before touching `index.js` or
+`client.js`.
+
+## What this repo is
+
+One npm package that hosts the **Subagent tree panel** as a permanent Cordis
+plugin for a DeepSeek Harness (DSH) runtime. There is no build step and no
+bundler: the committed files ARE the artifacts. `client.js` in particular is
+hand-authored in the client module system's lazy factory-CJS form — it is
+source and artifact at once. Do not "compile" it, do not convert it to ESM,
+and do not replace `React.createElement` with JSX.
+
+```
+package.json   package manifest; binds the two halves (see dsh.client)
+index.js       HOST half  — runs in the DSH Node process
+client.js      BROWSER half — runs in the web GUI page
+```
+
+### package.json mechanics (verified against the running harness)
+
+- `main: ./index.js` — the profile loader imports this for the host half.
+  The module must export `inject` (array of service names) and `apply(ctx)`.
+- `exports["./client"]` + `"dsh": { "client": { platform: "web", … } }` — the
+  client module system discovers client bundles ONLY through this pair
+  (`require.resolve('<name>/package.json')` + `exports["./client"]`). A
+  composition row can never deliver a browser half without them.
+- `dsh.client.platform` must stay `"web"`. `immediately: true` makes the shell
+  prefetch the bundle at boot.
+- `exports` MUST also expose `"./package.json": "./package.json"`. The client
+  module system discovers client bundles by
+  `require.resolve('<name>/package.json')` from the profile anchor; Node's
+  exports gating makes that lookup throw for any subpath the map does not
+  list, and the scanner swallows the failure as a silent "not a client
+  package" verdict: the HOST half mounts (plugin inventory looks normal) but
+  the browser half never reaches the page. The verdict is cached
+  process-lifetime — fixing the exports requires a DSH restart.
+
+## Install targets (deploy frequency: low)
+
+- **Package home:** `<DSH_HOME>/profiles/web/node_modules/dsh-subagent-tree/`
+  where `<DSH_HOME>` is `$DSH_HOME` (normally `%USERPROFILE%\.dsh`). Deploy
+  with `dsh plugin --profile web add <this-repo-path>` — pnpm installs from
+  the repo, and the package's `dsh.bundle.patch` makes that command self-wire
+  the composition row into the profile's bundle layer list. With a local path
+  spec, pnpm records a `link:` dependency: `node_modules/dsh-subagent-tree`
+  is a live symlink to this repo, so no sync step exists locally. Registry or
+  git-spec installs (what GitHub users get) materialize copies. A manual copy
+  deploy remains possible (README fallback) but then needs the manual row
+  below.
+- **Composition row (manual fallback only):** one entry in
+  `<DSH_HOME>/profiles/web/cordis.patch.yml`:
+
+  ```yaml
+  - insert:
+    - name: dsh-subagent-tree
+  ```
+
+  Never let this co-exist with the bundle form on one profile — double
+  insertion double-mounts the panel and throws `webserver: duplicate exact
+  route "/sgtree/snapshot"` at boot.
+- **Activation:** restart the DSH process, then refresh the browser page.
+  Host-half changes need the restart; client-bundle changes need restart +
+  refresh (the boot graph re-hashes the bundle at process start).
+
+**Development loop (this profile's dependency is a live `link:`):** edit the
+repo → restart DSH → refresh. The symlink makes the repo the installed copy;
+no sync step is needed. A registry or git-spec install would be snapshotted —
+relevant only if someone edits against a copied install. `node --check` runs
+from the repo directly; the restart re-hashes the client bundle.
+
+### Bundle form (adopted)
+
+The package declares `"dsh": { "bundle": { "patch": "lib/patch.yml" } }` and
+ships its insert row inside itself, so `dsh plugin --profile web add <github
+or path spec>` installs AND composes on any profile in one command. The patch
+file shares the profile patch grammar (`insert:` lists, id-targeted config
+overrides, disables). Publishing notes: `private` is intentionally absent;
+`files` whitelists `index.js`, `client.js`, `lib/patch.yml` (README, LICENSE,
+and package.json are always packed); git-spec installs need no `prepare`
+script because there is no build. If a profile previously received the manual
+row, remove it before enabling the bundle form (warning above).
+
+## Validation checklist (run after every edit)
+
+1. `node --check index.js` and `node --check client.js` (run from the package
+   directory so `type: module` is honored for the ESM file).
+2. `node --input-type=module -e "const m = await
+   import('<abs>/index.js'); console.log(m.inject, typeof m.apply)"`.
+3. `node <dsh>/lib/bin.js web --dump-config` — must name
+   `dsh-subagent-tree` exactly once, warn nothing.
+4. After deploy + restart + refresh: host console marker
+   `[sgtree] host half ready: /sgtree/snapshot route registered`; browser
+   devtools marker `[sgtree] client half ready`; a "Subagent tree" capsule
+   appears in the session header immediately left of "Session log", and the
+   sidebar footer button opens the panel too.
+
+## Hard constraints (breaking these breaks silently or loudly)
+
+- **Client bundle identity:** the registered id inside `client.js`
+  (`window.__ModuleLoader__.load({ id: '…', factory })`) must equal the
+  package name and the composition row name exactly (`dsh-subagent-tree`).
+  A mismatch is a loud boot throw.
+- **Plain JS only.** No TypeScript, JSX, or import transform anywhere.
+  React UI is `React.createElement`. The only allowed `require` in the
+  factory is `react` (the shell's static module table registers it; other
+  client-ui packages would additionally require their own graph rows).
+- **Lossless JSON at the route.** The host snapshot handler answers
+  `JSON.stringify` of plain data only; service/event objects are internal
+  live data — copy only the leaf fields needed (the `cleanOf` helper strips
+  `undefined`, keep it on every constructed payload object, including the
+  top-level success shape).
+- **`window` timers are fine in the static client** (unlike dynamic Cordis
+  packages); the 2 s poll is a busy-guarded `window.setInterval` whose
+  disposer lives in the React effect cleanup and `ctx.effect` ownership.
+- **Host half services:** hard inject `['subagents', 'webServer']`; optional
+  services (`agents`, `sessionQuery`) MUST be re-read per request with
+  `ctx.get` (they can mount after this row applies; a one-time capture at
+  apply-time can freeze as `undefined`).
+- **Route registration** goes through `ctx.webServer.register({ kind: 'exact',
+  path: '/sgtree/snapshot', handler })` inside `ctx.effect(...)` so the row
+  is unregistered when the effect disposes. Handler signature is Node raw
+  `(req, res)`; the handler takes over the response (`writeHead`/`end`).
+- Never edit shipped preset or bundle installs inside the app checkout
+  (`...\node_modules\@deepseek-ai\...`) to fix this package; the package and
+  the profile patch file are the only edit surfaces.
+- The exports-gated manifest lookup (`./package.json`) is this package's
+  loudest silent failure mode — see the package.json mechanics section.
+  Signature symptom: host mounted, plugin visible in settings, no panel or
+  opener anywhere on the page.
+
+## Behavior contract (user-approved; preserve across refactors)
+
+Client-side, these are deliberate; do not "clean them up":
+
+- Root row label `Session - <ProjectName>` (workspace basename — NOT an LLM
+  call); title bar reads `Subagents`; downward-opening tooltip at the root
+  (it sits at the panel's top edge).
+- Badges: `direct/total` on every section; a single number when the counts
+  are equal; inverted light chip on row hover (the badge hover must be
+  visible on dark backgrounds).
+- Context ring: 14×14 viewBox, R=5.5, `rotate(-90 7 7)`, dasharray
+  `C*pct/100 ' ' C`, track `border-l3`, fill `label-tertiary`; tooltip text
+  `N% of context used` (a space after `%`) plus `~used / window` tokens;
+  18 px ringslot reserved at the right edge even when the ring is absent;
+  an always-present meter/count line at the panel's right edge.
+- Dots: solid grey for finished and for recent finishers; `Finished [X]`
+  rows single-level indented at the top of their section; revealed subtrees
+  render collapsed; `X` = that session's hidden finished count.
+- Finished threshold: 10 minutes (`RECENT_MS`). Terminated/interrupted
+  continuable children (agents left resident `idle`, no end event) drain to
+  Finished after `IDLE_STALE_MS` = 2 min, via the `agent/status` idle map;
+  end stamps are first-seen-only (`subagent/end` repeatedly per run/epoch —
+  never let a repeat re-pin "recent").
+- Running mode (footer toggle): auto-expand while any descendant is live,
+  auto-collapse when none is; 10 s client-observed finisher linger;
+  diagnostics and Finished rows hidden; chevrons inert while on. Empty-state
+  text is exactly `No running subagents.` in BOTH modes — one unconditional
+  string, per user preference (no onboarding copy).
+- MAX_ROWS 500 cap with a visible truncation note.
+- Drag threshold: pointer-capture engages after 4 px; title-bar buttons
+  stopPropagation so drag never eats clicks; ✕ closes, ⟳ forces a poll.
+- **Header opener instead of a floating pill:** the opener lives in
+  `conversation.session.header.utilities` (same cluster as the Session log
+  capsule), id `sgtree-header`, `order: -1` so it renders immediately LEFT of
+  "Session log"; it must look like the Session log capsule (32 px, 18px
+  radius, min-width 111px, `.sgp-headerbtn`). The sidebar footer button is
+  the secondary opener and covers the no-session hero state, where the
+  header is not rendered. Entry's closed state renders null.
+
+## Repo hygiene
+
+- No build system: nothing to regenerate; CI (if added) should run only the
+  validation checklist (steps 1–3) — they are Node-only and offline.
+- Do not commit the installed copies under `%USERPROFILE%\.dsh` (user data).
+- The `sgtree` dynamic Cordis plugin in live sessions was the authoring
+  vehicle; its definitions die with the process by design. Do not add it
+  back; this repo supersedes it.
