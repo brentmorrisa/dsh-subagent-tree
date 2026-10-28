@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] — 2026-10-28
+
+### Added
+
+- **The tree roots at the top-level session.** Opening the tab inside a subagent
+  no longer produces a tree rooted there: `rootOf()` walks the client's session
+  summaries up to the highest discoverable ancestor and requests that tree, so
+  the session you are in shows as an outlined row and the root row navigates
+  back up. The walk re-resolves through a `useSessions` selector, so a parent
+  that only becomes discoverable after a restart re-roots the tree instead of
+  leaving it stuck at whichever subagent was seen first.
+- **The tab follows the active session.** Switching to another session opens the
+  tree there when it was open in the session being left (retried briefly while
+  the dock adopts the new layout). A session where you closed the tab stays
+  closed.
+- `test/lineage-root.test.js` — nine cases covering the walk, including the
+  field-name regression below — plus the `__rootOf` test seam beside
+  `__formatTokens`.
+
+### Changed
+
+- **View state is shared per tree, not per session.** Collapsed sections,
+  `Finished` filters and Running mode are keyed by the tree root, so expanding
+  in a descendant and returning to the top-level session shows the same
+  expansion: they are the same tree, and both directions mirror.
+
+### Fixed
+
+- The lineage walk reads **`parentId`**, the field the client's list projection
+  actually populates, instead of the wire name `parentSessionId` (which the host
+  sends and the sidebar's own `flattenLineage` consumes). Reading the wire name
+  rooted every tree at the tab's own session — it looked correct, just one level
+  too deep, which is why the first attempt appeared to do nothing.
+
 ## [1.0.6] — 2026-10-27
 
 ### Changed

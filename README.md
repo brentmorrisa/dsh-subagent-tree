@@ -29,6 +29,14 @@ the subagent registry and serves a snapshot route, and a browser half
 - **Docked, not floating** — the tree is a right-sidebar tab docked beside
   Files, Browser, Terminal and the subagent chat. The dock owns sizing,
   splitting and layout persistence per session; there is nothing to drag.
+- **Rooted at the top-level session** — open the tab from inside a subagent and
+  it still shows the top-level session's tree, with the session you are in
+  outlined. Clicking the root row goes back up. A parent that only becomes
+  discoverable later (say, after a restart) re-roots the tree by itself.
+- **The view follows you** — switching to a session that has the tab open in the
+  one you left opens it there too. Collapsed sections, `Finished` filters and
+  Running mode are shared across every tab showing the same tree, so expanding
+  in a child and coming back to the parent keeps the same expansion.
 - A **"Subagents" capsule in the session header** (immediately left of the
   "Session log" button) toggles it: with no tab it opens one and reveals the
   column; with the column showing it collapses the column and leaves the tab
@@ -65,6 +73,12 @@ again, and stamps for disposed agents are dropped each poll.
 - **The `web` profile no longer exists in the desktop app.** Older DSH
   releases ran as a Node service with a free-named profile (`dsh web`); the
   desktop app reserves the single `desktop` profile and manages it itself.
+- **Nested trees need delegation depth 2.** The harness caps delegation at
+  `maxDepth` 1 by default, which permits direct children only — the panel
+  will faithfully render whatever exists, but nothing two levels deep can be
+  created until that is raised (Plugins → Subagent → Limits, or
+  `- id: subagent` with `config: { maxDepth: 2 }` in the profile patch).
+  It applies on the next delegation attempt, no restart.
 
 ## Install
 
@@ -145,6 +159,9 @@ The profile's composed tree cannot be dumped on the desktop app
   left of the "Session log" button. Clicking it opens the tab and reveals the
   column; clicking it again while the column is showing collapses the column
   and leaves the tab in the strip.
+- **Rooting** — open the tab from inside a subagent session: the root row should
+  name the top-level session (not the subagent), and the subagent you are in
+  should appear as an outlined row. Clicking the root row returns to it.
 
 ## Diagnostics
 

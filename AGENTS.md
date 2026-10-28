@@ -242,21 +242,42 @@ Client-side, these are deliberate; do not "clean them up":
   interval with it. Every activity decision re-reads the snapshot
   (level-triggered); never accumulate from change edges, or a finish racing a
   start strands the poller.
-- **Per-session view state.** Collapsed sections, `Finished` filters and
-  Running mode live in `uiStates` — a Map keyed by the watched session id —
-  outside the component, with the snapshot cache beside it. The dock remounts
-  the tab body on every session swap, so component `useState` would reset the
-  tree on each switch; do not move this state back into the component, and do
-  not reintroduce an `[anchor]` effect that clears it. The store is in-memory
-  only, so a page reload resets it (intended).
+- **View state is keyed by the TREE ROOT.** Collapsed sections, `Finished`
+  filters and Running mode live in `uiStates` — a Map keyed by `rootId`, not by
+  the tab's own session — outside the component, with the snapshot cache beside
+  it. The dock remounts the tab body on every session swap, so component
+  `useState` would reset the tree on each switch; do not move this state back
+  into the component, and do not reintroduce an `[anchor]` effect that clears
+  it. Keying by root is deliberate: the tab opened in a descendant and the tab
+  opened in the top-level session show the same tree, so expanding in one
+  mirrors in the other (both directions). Separate trees keep separate state.
+  The store is in-memory only, so a page reload resets it (intended).
+- **Rooted at the highest discoverable ancestor.** `rootOf()` walks
+  `sessions.list` from the tab's session upward; the snapshot is requested with
+  that root, so opening the tab inside a subagent shows the top-level tree and
+  the current session appears as a row (outlined, `sgp-current`). Critically,
+  the client's list rows carry **`parentId`** — the host/wire field is
+  `parentSessionId`, and the sidebar's own `flattenLineage` reads *that* form.
+  Reading the wire name from `byId` silently roots every tree at the tab's own
+  session (looks fine, one level too deep); `test/lineage-root.test.js` guards
+  this. `rootOf` is resolved through a `useSessions` selector, so a parent that
+  only becomes discoverable later re-roots the tree without a reload.
+- **Auto-open follows the active session.** When the active session changes and
+  our tab exists in the session being left, `apply()` opens the tab in the
+  session being entered (`openTabIn`), retrying at 150 ms and 600 ms because the
+  dock adopts the new session's layout a beat late. Gated on the previous
+  session actually having the tab; a session where you closed it stays closed.
+  Re-opening a page tab reveals, never duplicates.
 
 ## Repo hygiene
 
 - No build system: nothing to regenerate. `npm test` (`node --test`) runs the
   offline suite in `test/`; it loads `client.js` through a stubbed
-  `window.__ModuleLoader__` and reaches the pure formatter via the
-  `__formatTokens` seam on the plugin object (a test seam, not plugin
-  contract). CI should run that plus the validation checklist. `test/` is
+  `window.__ModuleLoader__` and reaches the pure helpers via the
+  `__formatTokens` / `__rootOf` seams on the plugin object (test seams, not
+  plugin contract). Both live at factory scope — a helper exposed from inside
+  `apply` is a ReferenceError that takes the whole client bundle down.
+  CI should run that plus the validation checklist. `test/` is
   deliberately outside the `files` whitelist, so it never ships in the tarball.
   Use the bare discovery form: `node --test test/` (a directory argument) fails
   on some Node versions by trying to resolve the directory as a module.

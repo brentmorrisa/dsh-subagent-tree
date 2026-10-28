@@ -100,6 +100,39 @@ window.__ModuleLoader__.load({
     const TAB_ID = 'dsh-subagent-tree'
     const TAB_KIND = 'sgtree'
 
+    // Highest discoverable ancestor of a session, read from the client's own
+    // summary store. NOTE the field name: the wire/host summaries call this
+    // `parentSessionId`, but the client's list projection renames it to
+    // `parentId` when it builds `byId` (the sidebar's own `flattenLineage`
+    // reads the wire form, which is why the two look interchangeable and are
+    // not). Read `parentId` first, keeping the wire name as a fallback. A
+    // parent absent from the store stops the walk: root at the highest ancestor
+    // we can name, and re-resolve on the next list change so a parent that only
+    // becomes discoverable after a restart re-roots the tree rather than being
+    // stuck at a subagent that happened to be seen first.
+    //
+    // Factory scope (not `apply`) so test/ can reach it via `__rootOf`; it needs
+    // no `ctx`.
+    const rootOf = function (summaries, sessionId) {
+      if (sessionId === undefined || sessionId === null) return sessionId
+      const byId = summaries === undefined || summaries === null ? undefined : summaries.byId
+      if (byId === undefined || byId === null) return sessionId
+      let currentId = sessionId
+      const seen = {}
+      for (let depth = 0; depth < 100; depth += 1) {
+        if (currentId === undefined || currentId === null) break
+        if (seen[currentId] === true) break
+        seen[currentId] = true
+        const row = byId[currentId]
+        if (row === undefined || row === null) break
+        const parent = row.parentId !== undefined ? row.parentId : row.parentSessionId
+        if (parent === undefined || parent === null || parent === '') break
+        if (byId[parent] === undefined) break
+        currentId = parent
+      }
+      return currentId
+    }
+
     return {
       inject: ['sessions', 'slots', 'uiWorkspace', 'sidebarRight', 'sidebarRightTabs'],
       apply: function (ctx) {
@@ -156,6 +189,50 @@ window.__ModuleLoader__.load({
           return state
         }
         const snapshotCache = new Map()
+        // `rootOf` lives at factory scope (see above) so the test seam can
+        // reach it; it needs no `ctx`.
+
+        // Whether our tab is currently open in one session.
+        const tabOpenIn = function (sidebar, sessionId) {
+          if (sessionId === undefined || sessionId === null) return false
+          if (sidebar === undefined || typeof sidebar.tabsIn !== 'function') return false
+          const tabs = sidebar.tabsIn(sessionId)
+          for (const tab of tabs || []) {
+            if (tab !== undefined && tab !== null && tab.kind === TAB_KIND) return true
+          }
+          return false
+        }
+
+        // Auto-open: when the active session changes and the tree was open in
+        // the session being left, open it in the session being entered. The dock
+        // adopts the new session's layout a beat after the selection changes and
+        // `openTabIn` no-ops until then, so retry; an already-open page tab is
+        // revealed, never duplicated.
+        const followActiveSession = function () {
+          const ws = ctx.get('uiWorkspace')
+          const selection = ws === undefined ? undefined : ws.selection
+          if (selection === undefined || typeof selection.subscribe !== 'function') return
+          let previous = selection.getSnapshot().sessionId
+          ctx.effect(function () {
+            return selection.subscribe(function () {
+              const next = selection.getSnapshot().sessionId
+              if (next === previous) return
+              const from = previous
+              previous = next
+              if (from === undefined || from === null || next === undefined || next === null) return
+              const sidebar = ctx.get('sidebarRight')
+              if (sidebar === undefined || typeof sidebar.openTabIn !== 'function') return
+              if (!tabOpenIn(sidebar, from)) return
+              const open = function () {
+                try { sidebar.openTabIn(next, TAB_KIND) } catch (err) {}
+              }
+              open()
+              window.setTimeout(open, 150)
+              window.setTimeout(open, 600)
+            })
+          }, 'subagent-tree: follow the active session')
+        }
+        followActiveSession()
 
         const firstText = function (a, b, c) {
           if (a !== undefined && a !== null && a !== '') return a
@@ -251,15 +328,26 @@ window.__ModuleLoader__.load({
           const current = tabSession !== undefined
             ? tabSession
             : (selection === undefined || selection === null ? undefined : selection.sessionId)
-
+          // The tree roots at the highest discoverable ancestor, so a tab opened
+          // inside a subagent still shows the top-level tree and can be navigated
+          // back up. Reactive to the session list, so a parent that only becomes
+          // discoverable later re-roots the tree instead of leaving it stuck at
+          // whichever subagent was seen first.
+          const rootId = (typeof useSessionsProp === 'function')
+            ? useSessionsProp(function (s) { return rootOf(s, current) })
+            : current
           const anchorState = React.useState(undefined)
           const anchor = anchorState[0]
           const setAnchor = anchorState[1]
 
+          // Project name for the root row comes from the ROOT session (the tree
+          // is rooted above us when the tab is open inside a subagent), falling
+          // back to the tab's own session.
           const anchorCwd = (typeof useSessionsProp === 'function')
             ? useSessionsProp(function (s) {
-              if (anchor === undefined) return undefined
-              const row = s.byId && s.byId[anchor]
+              const id = rootId !== undefined ? rootId : anchor
+              if (id === undefined) return undefined
+              const row = s.byId && s.byId[id]
               return row && row.cwd ? row.cwd : undefined
             })
             : undefined
@@ -274,13 +362,20 @@ window.__ModuleLoader__.load({
           const setError = errPair[1]
 
           // Collapsed sections, Finished filters and Running mode live OUTSIDE
-          // the component, keyed by the watched session, because the dock
-          // tears the tab body down whenever the user swaps sessions — any
-          // useState here would silently reset on every switch. One render
-          // counter forces the re-render the plain-object store cannot.
+          // the component because the dock tears the tab body down whenever the
+          // user swaps sessions — any useState here would silently reset on
+          // every switch. One render counter forces the re-render the plain
+          // object store cannot.
+          //
+          // Keyed by the TREE ROOT, not by the tab's own session: the tree is
+          // re-rooted at the highest ancestor, so every tab showing the same
+          // tree (the top-level session and any descendant) shares one view.
+          // That is deliberate — cross-examining a parent and a child should not
+          // mean re-expanding the same chevrons in each. Different trees keep
+          // separate state.
           const uiPair = React.useState(0)
           const bumpUi = uiPair[1]
-          const ui = uiStateFor(anchor)
+          const ui = uiStateFor(rootId)
           const collapsed = ui.collapsed
           const showFin = ui.showFin
           const runningMode = ui.runningMode
@@ -364,17 +459,17 @@ window.__ModuleLoader__.load({
             setError(undefined)
             liveSeenBox.clear()
             endObsBox.clear()
-            const cached = cacheBox.get(anchor)
+            const cached = cacheBox.get(rootId)
             if (cached !== undefined) setDataState(cached)
             else setDataState(undefined)
-          }, [anchor])
+          }, [anchor, rootId])
 
           // No collapse/showFin reset on anchor change: that state is keyed by
           // session in `uiStates`, so swapping sessions restores it. The old
           // reset here is what silently cleared it on every switch.
 
           React.useEffect(function () {
-            if (anchor === undefined) return
+            if (rootId === undefined) return
             let cancelled = false
             let busy = false
             let timer
@@ -418,7 +513,7 @@ window.__ModuleLoader__.load({
               if (busy === true) return
               if (!isVisible()) return
               busy = true
-              snapshotOf(anchor)
+              snapshotOf(rootId)
                 .then(function (payload) {
                   busy = false
                   if (cancelled) return
@@ -436,8 +531,8 @@ window.__ModuleLoader__.load({
                     if (prev !== undefined && prev.json === json) return prev
                     return packed
                   })
-                  if (cacheBox.get(anchor) === undefined || cacheBox.get(anchor).json !== json) {
-                    cacheBox.set(anchor, packed)
+                  if (cacheBox.get(rootId) === undefined || cacheBox.get(rootId).json !== json) {
+                    cacheBox.set(rootId, packed)
                     if (cacheBox.size > 8) {
                       const oldest = cacheBox.keys().next()
                       if (!oldest.done) cacheBox.delete(oldest.value)
@@ -509,14 +604,14 @@ window.__ModuleLoader__.load({
               if (timer !== undefined) window.clearTimeout(timer)
               if (typeof unsubscribe === 'function') unsubscribe()
             }
-          }, [anchor])
+          }, [anchor, rootId])
 
-          const selectAnchor = function () {
-            if (anchor === undefined) return
+          const selectSession = function (id) {
+            if (id === undefined || id === null) return
             const ws = ctx.get('uiWorkspace')
             if (ws === undefined || typeof ws.openSession !== 'function') return
             try {
-              ws.openSession(anchor)
+              ws.openSession(id)
             } catch (err) {}
           }
 
@@ -789,7 +884,7 @@ window.__ModuleLoader__.load({
               key: snap.root.id,
               className: 'sgp-row sgp-rootrow' + (snap.root.id === current ? ' sgp-current' : ''),
               style: { paddingLeft: 6, paddingRight: 4 },
-              onClick: function () { selectAnchor() },
+              onClick: function () { selectSession(snap.root.id) },
               title: rootDetail,
             },
               React.createElement('span', { className: 'sgp-chev sgp-chev-empty' }, '\u25CB'),
@@ -880,10 +975,11 @@ window.__ModuleLoader__.load({
         console.log('[sgtree] client half ready')
       },
 
-      // Test seam (see test/token-format.test.js): the client factory cannot
-      // import Node modules, so the pure formatter rides on the plugin object
-      // where a test can reach it. Not part of the plugin contract.
+      // Test seams (see test/): the client factory cannot import Node modules,
+      // so the pure helpers ride on the plugin object where a test can reach
+      // them. Not part of the plugin contract.
       __formatTokens: formatTokens,
+      __rootOf: rootOf,
     }
   }
 })
