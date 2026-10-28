@@ -377,17 +377,46 @@ window.__ModuleLoader__.load({
             if (anchor === undefined) return
             let cancelled = false
             let busy = false
-            const load = function () {
-              if (busy === true) return
-              // Do no work at all while the tree cannot be seen: the dock host
-              // is `visibility:hidden` when the column is collapsed, the pane
-              // is hidden, or the window is minimised/backgrounded. The timer
-              // keeps ticking (a no-op) so revealing the column resumes on the
-              // next tick without any subscription or teardown.
-              if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+            let timer
+            let wasVisible = false
+            // Whether the last painted tree still showed work in flight; keeps
+            // the fast cadence for one extra tick after the work ends, so the
+            // finishing state is painted rather than frozen.
+            let treeActive = false
+
+            // The dock host is `visibility:hidden` when the column is collapsed,
+            // the pane is hidden, or the window is minimised/backgrounded. The
+            // element itself is the signal: `isExpanded()` is false for a tab
+            // dragged into a floating pane, which is still visible.
+            const isVisible = function () {
+              if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false
               const el = rootRef.current
               if (el !== null && el !== undefined && typeof el.checkVisibility === 'function'
-                && el.checkVisibility({ visibilityProperty: true }) === false) return
+                && el.checkVisibility({ visibilityProperty: true }) === false) return false
+              return true
+            }
+
+            // Level-triggered: read the live session snapshot on every tick, so
+            // a session finishing while another starts cannot leave a stale
+            // edge. An unavailable store falls back to "active" (poll fast).
+            const anySessionRunning = function () {
+              const svc = ctx.get('sessions')
+              const store = svc === undefined ? undefined : svc.list
+              if (store === undefined || typeof store.getSnapshot !== 'function') return true
+              const snap = store.getSnapshot()
+              if (snap === undefined || snap === null) return true
+              const ids = snap.ids || []
+              const byId = snap.byId || {}
+              for (const id of ids) {
+                const row = byId[id]
+                if (row !== undefined && row !== null && row.running === true) return true
+              }
+              return false
+            }
+
+            const load = function () {
+              if (busy === true) return
+              if (!isVisible()) return
               busy = true
               snapshotOf(anchor)
                 .then(function (payload) {
@@ -398,8 +427,11 @@ window.__ModuleLoader__.load({
                     return
                   }
                   setError(undefined)
+                  const nodes = payload.nodes || []
+                  treeActive = (payload.root !== undefined && payload.root !== null && payload.root.status === 'working')
+                    || nodes.some(function (n) { return n.status === 'working' })
                   const json = JSON.stringify(payload)
-                  const packed = { json: json, snapshot: { root: payload.root, nodes: payload.nodes || [] } }
+                  const packed = { json: json, snapshot: { root: payload.root, nodes: nodes } }
                   setDataState(function (prev) {
                     if (prev !== undefined && prev.json === json) return prev
                     return packed
@@ -424,11 +456,58 @@ window.__ModuleLoader__.load({
                   if (!cancelled) setError(String((err && err.message) || err))
                 })
             }
+
+            // Cadence. Session starts, resumes and submitted messages arrive
+            // through the `sessions.list` subscription below, so the idle tick
+            // exists ONLY to let the host's two time-based transitions be
+            // observed: IDLE_STALE_MS (2 min, resident idle -> inactive) and
+            // RECENT_MS (10 min, grey recent dot -> Finished row). Both are
+            // computed per request in index.js from `now`, so a request must
+            // land after they elapse or the row stays in its old state.
+            // IDLE_POLL_MS is deliberately a whole multiple of IDLE_STALE_MS
+            // (2 min) so the shorter transition is seen within one idle tick;
+            // if either host constant in index.js changes, change this to
+            // match, and keep it a divisor-friendly multiple of RECENT_MS too.
+            const ACTIVE_POLL_MS = 2000
+            const IDLE_POLL_MS = 2 * 60 * 1000
+            const schedule = function (ms) {
+              if (cancelled) return
+              timer = window.setTimeout(function () {
+                const visible = isVisible()
+                const resumed = visible === true && wasVisible !== true
+                wasVisible = visible
+                if (visible) load()
+                schedule(resumed || treeActive === true || anySessionRunning() ? ACTIVE_POLL_MS : IDLE_POLL_MS)
+              }, ms)
+            }
+
+            // Wake immediately when a session becomes active, instead of waiting
+            // out the idle tick. The list store is fed by the host's status and
+            // activity frames, so a start, resume or submitted message lands
+            // here at once. Every decision re-reads the snapshot: nothing is
+            // accumulated from edges, so a session finishing while another
+            // starts cannot strand the poller.
+            const listStore = (function () {
+              const svc = ctx.get('sessions')
+              return svc === undefined ? undefined : svc.list
+            })()
+            let unsubscribe
+            if (listStore !== undefined && typeof listStore.subscribe === 'function') {
+              unsubscribe = listStore.subscribe(function () {
+                if (cancelled) return
+                if (treeActive !== true && anySessionRunning() !== true) return
+                if (timer !== undefined) window.clearTimeout(timer)
+                load()
+                schedule(ACTIVE_POLL_MS)
+              })
+            }
+
             load()
-            const timer = window.setInterval(load, 2000)
+            schedule(ACTIVE_POLL_MS)
             return function () {
               cancelled = true
-              window.clearInterval(timer)
+              if (timer !== undefined) window.clearTimeout(timer)
+              if (typeof unsubscribe === 'function') unsubscribe()
             }
           }, [anchor])
 

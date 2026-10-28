@@ -227,6 +227,19 @@ Client-side, these are deliberate; do not "clean them up":
   and no teardown. Do **not** replace this with `sidebarRight.isExpanded()`: a
   tab dragged into a floating pane is visible while `expanded` is false, and
   the element check covers both.
+- **Cadence and wake.** The poller is a self-scheduling timeout: **2 s** while
+  any session is running or the tree still shows `working`, **2 minutes**
+  otherwise. It also subscribes to the `sessions.list` snapshot store and
+  reloads immediately when a session becomes active — the store is fed by the
+  host's status and activity frames, so a start, resume or submitted message
+  wakes it at once, then it returns to the 2 s cadence. The idle tick exists
+  only to let the host's two time-based transitions be observed
+  (`IDLE_STALE_MS` 2 min and `RECENT_MS` 10 min in `index.js`, both recomputed
+  per request), so it must not be removed, and `IDLE_POLL_MS` must stay a whole
+  multiple of `IDLE_STALE_MS`: if either host constant changes, move the idle
+  interval with it. Every activity decision re-reads the snapshot
+  (level-triggered); never accumulate from change edges, or a finish racing a
+  start strands the poller.
 - **Per-session view state.** Collapsed sections, `Finished` filters and
   Running mode live in `uiStates` — a Map keyed by the watched session id —
   outside the component, with the snapshot cache beside it. The dock remounts

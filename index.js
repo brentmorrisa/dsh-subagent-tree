@@ -16,6 +16,15 @@ export function apply(ctx) {
   const idleMap = new Map();
   const TITLE_TTL = 30000;
   const PENDING_TTL = 3000;
+  // The two time-based status transitions, computed per request from `now`:
+  //   RECENT_MS      — how long a finished session keeps its grey "recent" dot
+  //                    before tucking into its section's Finished row.
+  //   IDLE_STALE_MS  — how long a resident idle agent is shown as `idle`
+  //                    before draining to `inactive`.
+  // The browser half polls slower when nothing is running, so its idle
+  // interval must stay a multiple of these (see IDLE_POLL_MS in client.js):
+  // shorten either value below that interval and the transition will not be
+  // observed until the next idle tick.
   const RECENT_MS = 10 * 60 * 1000;
   const IDLE_STALE_MS = 2 * 60 * 1000;
 

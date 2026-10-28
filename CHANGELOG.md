@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] — 2026-10-27
+
+### Changed
+
+- **The poll slows down when nothing is running, and wakes instantly when
+  something starts.** The fixed 2 s interval became a self-scheduling timeout:
+  2 s while any session is running or the tree still shows `working`, 2 minutes
+  otherwise. The poller also subscribes to the `sessions.list` snapshot store
+  (fed by the host's status and activity frames), so a session starting,
+  resuming or receiving a message reloads the tree immediately instead of
+  waiting out the idle tick.
+- The idle tick is deliberately not zero: the 2-minute idle drain
+  (`IDLE_STALE_MS`) and the 10-minute finished grace (`RECENT_MS`) are computed
+  host-side per request, so stopping outright would leave finished rows frozen
+  in their old state until activity resumed. One request every 2 minutes —
+  ~30/hour against 1,800 before — keeps both transitions resolving, and is a
+  whole multiple of the shorter one. If either host constant changes, the
+  idle interval must move with it.
+- Activity is read level-triggered from the live snapshot on every decision —
+  nothing is accumulated from change edges — so a session finishing at the same
+  moment another starts cannot strand the poller.
+
 ## [1.0.5] — 2026-10-27
 
 ### Changed
