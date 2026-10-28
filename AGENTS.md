@@ -41,12 +41,13 @@ client.js      BROWSER half — runs in the web GUI page
 ## Install targets (deploy frequency: low)
 
 - **Package home:** `<DSH_HOME>/profiles/desktop/node_modules/dsh-subagent-tree/`
-  where `<DSH_HOME>` is `$DSH_HOME` (normally `%USERPROFILE%\.dsh`). The
-  desktop app reserves the single `desktop` profile: it refuses to boot or
-  dump config for it, and only the `plugin` subcommand is allowed — through
-  the app's own launcher, which passes the desktop flag that permits it. There
-  is **no `dsh` on `PATH`**; on Windows the launcher is
-  `"%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"`,
+  where `<DSH_HOME>` is `$DSH_HOME` (e.g. `~/.dsh`, or `%USERPROFILE%\.dsh` on
+  Windows). The desktop app reserves the single `desktop` profile: it refuses
+  to boot or dump config for it, and only the `plugin` subcommand is allowed —
+  through the app's own launcher, which passes the desktop flag that permits
+  it. There is **no `dsh` on `PATH`**; the launcher lives at
+  `resources/runtime/cli/bin/` inside the installation (on Windows
+  `"%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"`),
   so deploy with
   `<launcher> plugin --profile desktop add <this-repo-path>`. pnpm installs
   from the repo, and the package's `dsh.bundle.patch` makes that command
@@ -71,7 +72,7 @@ client.js      BROWSER half — runs in the web GUI page
   but an edit to `index.js` needs a full app restart, and a client-bundle
   change needs a page reload (the boot graph re-hashes at process start).
 
-**Development loop (this profile's dependency is a live `link:`):** edit the
+**Development loop (when the profile's dependency is a live `link:`):** edit the
 repo → reload the page for `client.js`, restart the app for `index.js`. The
 junction makes the repo the installed copy; no sync step is needed. A registry
 or git-spec install would be snapshotted — relevant only if someone edits
@@ -127,8 +128,8 @@ row, remove it before enabling the bundle form (warning above).
   `undefined`, keep it on every constructed payload object, including the
   top-level success shape).
 - **`window` timers are fine in the static client** (unlike dynamic Cordis
-  packages); the 2 s poll is a busy-guarded `window.setInterval` whose
-  disposer lives in the React effect cleanup and `ctx.effect` ownership.
+  packages); the poll is a self-scheduling `window.setTimeout` whose disposer
+  lives in the React effect cleanup (see the cadence contract below).
 - **Host half services:** hard inject `['subagents', 'webServer']`; optional
   services (`agents`, `sessionQuery`) MUST be re-read per request with
   `ctx.get` (they can mount after this row applies; a one-time capture at
@@ -218,8 +219,9 @@ Client-side, these are deliberate; do not "clean them up":
 - The capsule is content-sized: 32 px tall, 18 px radius, `.sgp-headerbtn`, with
   **no `min-width`** — the old 111 px floor existed to match the Session log
   capsule and only left dead space once the label became `Subagents`.
-- No refresh button and no "2s refresh" caption: the 2 s poll is the only
-  refresh path. The poller is **visibility-gated**: `load()` returns before the
+- No refresh button and no "2s refresh" caption: the poll is the only
+  refresh path (its cadence is specified below). The poller is
+  **visibility-gated**: `load()` returns before the
   fetch when `document.visibilityState === 'hidden'`, or when the tree root
   fails `checkVisibility({ visibilityProperty: true })` (collapsed column,
   hidden pane). The timer keeps ticking as a cheap no-op, so revealing the
@@ -256,7 +258,9 @@ Client-side, these are deliberate; do not "clean them up":
   `__formatTokens` seam on the plugin object (a test seam, not plugin
   contract). CI should run that plus the validation checklist. `test/` is
   deliberately outside the `files` whitelist, so it never ships in the tarball.
-- Do not commit the installed copies under `%USERPROFILE%\.dsh` (user data).
+  Use the bare discovery form: `node --test test/` (a directory argument) fails
+  on some Node versions by trying to resolve the directory as a module.
+- Do not commit the installed copies under `<DSH_HOME>` (user data).
 - The `sgtree` dynamic Cordis plugin in live sessions was the authoring
   vehicle; its definitions die with the process by design. Do not add it
   back; this repo supersedes it.

@@ -69,10 +69,12 @@ again, and stamps for disposed agents are dropped each poll.
 ## Install
 
 The desktop app ships DSH as an Electron bundle, so there is **no `dsh` on
-`PATH`** — use the launcher inside the installation. On Windows:
+`PATH`** — use the launcher inside the installation: `resources/runtime/cli/bin/`
+under the app's resources directory. The examples below show the Windows form
+(`dsh.cmd`); other platforms ship an equivalent launcher at the same relative
+path.
 
-**From a local clone or path** (what this checkout is installed as, and the
-form verified on 0.2.1-rc.3):
+**From a local clone or path** (the form a development checkout uses):
 
 ```bat
 "%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add C:\path\to\dsh-subagent-tree
@@ -88,18 +90,16 @@ installed copy: edit it, restart, and the change is live.
 ```
 
 A `github:` install materializes a snapshot copy in the profile rather than
-linking, so it installs whatever version `main` carries. **It needs 1.0.1 or
-later** — 1.0.0 predates the client-API port recorded in
-[`CHANGELOG.md`](CHANGELOG.md), and its panel will not render on the desktop
-app. If `main` is still at 1.0.0, use the path form (or push the fixes first),
-and re-install after any future fix since the copy does not track the
-repository.
+linking, so it installs whatever version `main` carries. The client-API port
+landed in 1.0.1, so anything older than that will not render on the desktop
+app; the current `main` is 1.0.6. Because the copy does not track the
+repository, re-install after any future fix.
 
 Either form is a single command because the package declares its own bundle
 patch (`dsh.bundle.patch` → `lib/patch.yml`): `dsh plugin` installs the package
-into `%USERPROFILE%\.dsh\profiles\desktop` (pnpm-managed, so it survives
-profile reinstalls) **and** reconciles its composition row into the profile's
-`dsh.profile.bundles`. Nothing else to edit.
+into `<DSH_HOME>/profiles/desktop` (normally `~/.dsh`, pnpm-managed so it
+survives profile reinstalls) **and** reconciles its composition row into the
+profile's `dsh.profile.bundles`. Nothing else to edit.
 
 Then **fully quit and reopen the app**, and **refresh the page**. The host half
 usually hot-applies as soon as the bundle row lands; the browser bundle is
@@ -118,8 +118,8 @@ Notes for the desktop profile:
 **Manual fallback** (only if the app launcher cannot be used):
 
 Copy `package.json`, `index.js`, `client.js`, and `lib/patch.yml` into
-`%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-subagent-tree\`, then add
-one row to `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`:
+`<DSH_HOME>/profiles/desktop/node_modules/dsh-subagent-tree/`, then add
+one row to `<DSH_HOME>/profiles/desktop/cordis.patch.yml`:
 
 ```yaml
 - insert:
@@ -132,10 +132,10 @@ The profile's composed tree cannot be dumped on the desktop app
 (`--dump-config` is refused), so verify against the running app instead:
 
 - **Route** — the host half serves `GET /sgtree/snapshot?rootId=<sessionId>` on
-  the GUI origin (the port the app opened, e.g. `http://127.0.0.1:60446`). On
-  0.2.1-rc.3 a plain request answers without extra credentials, unlike the
-  app's own pages: a live host returns JSON with `revision`, `root`, and
-  `nodes`, and an unknown id answers
+  the GUI origin (the port the app opened, e.g. `http://127.0.0.1:<port>`). On
+  the version verified here a plain request answers without extra credentials,
+  unlike the app's own pages: a live host returns JSON with `revision`, `root`,
+  and `nodes`, and an unknown id answers
   `{"revision":N,"error":"session \"…\" not found"}`. A 404 means the host half
   did not activate.
 - **Browser console** — a successful boot logs `[sgtree] client half ready`,
@@ -150,8 +150,8 @@ The profile's composed tree cannot be dumped on the desktop app
 
 - `web boot: N entries did not activate` naming this package — the host tree is
   missing `subagents` or `webServer`, or the browser tree is missing
-  `sessions`/`slots`/`uiWorkspace`; read the import error on this package's
-  console entry.
+  `sessions`/`slots`/`uiWorkspace`/`sidebarRight`/`sidebarRightTabs`; read the
+  import error on this package's console entry.
 - Panel shows `snapshot request failed: HTTP 404` — the host half did not
   activate (`subagents` or `webServer` missing in the host tree).
 - Capsule missing entirely — the client bundle did not register. Check the
@@ -165,6 +165,9 @@ The profile's composed tree cannot be dumped on the desktop app
 ## Screenshot
 
 <img width="616" height="723" alt="image" src="https://github.com/user-attachments/assets/d05bf77c-3077-4b3d-9d6a-61ed168a75a0" />
+
+(Taken in the pre-1.0.3 floating-window layout. The tree now docks as a
+right-sidebar tab, as described above.)
 
 ## Development
 
