@@ -1,7 +1,7 @@
 {
   "name": "dsh-subagent-tree",
   "description": "Subagent tree panel (sgtree): a right-sidebar tab with a persistent tree of delegated subagent sessions, live status dots, direct/total badges, context-occupancy rings, a Finished section per session, and a Running mode",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "MIT",
   "type": "module",
   "main": "./index.js",

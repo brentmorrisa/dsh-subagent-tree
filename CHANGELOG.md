@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] — 2026-10-27
+
+### Fixed
+
+- **The tree's collapse state no longer resets when swapping sessions.** The
+  dock remounts the tab body for each session, so every `useState` inside it
+  started empty — collapsed sections, `Finished` filters and Running mode were
+  lost on every switch. That state now lives in a per-session store outside the
+  component (`uiStates`, keyed by the watched session id) and the component
+  reads through it, so each session keeps its own view. A side effect is that
+  the state also survives closing and reopening the tab; it is a plain
+  in-memory store, so it resets when the page reloads.
+- Removed the `[anchor]` effect that reset collapsed/Finished state. It existed
+  for the old model where an anchor change meant a new tree, and it would have
+  clobbered the restored state on mount.
+
+### Changed
+
+- The snapshot cache now lives beside that store instead of inside the
+  component, so switching back to a session paints its last snapshot
+  immediately rather than flashing the empty state before the poll returns.
+
 ## [1.0.3] — 2026-10-27
 
 ### Changed

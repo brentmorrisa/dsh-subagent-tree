@@ -142,6 +142,21 @@ window.__ModuleLoader__.load({
           } catch (err) {}
         }
 
+        // Per-session UI state (collapsed sections, Finished filters, Running
+        // mode) plus the snapshot cache. Both live here rather than inside the
+        // component so a session swap — which remounts the tab body — restores
+        // what the user left behind instead of resetting it.
+        const uiStates = new Map()
+        const uiStateFor = function (key) {
+          let state = uiStates.get(key)
+          if (state === undefined) {
+            state = { collapsed: {}, showFin: {}, runningMode: false }
+            uiStates.set(key, state)
+          }
+          return state
+        }
+        const snapshotCache = new Map()
+
         const firstText = function (a, b, c) {
           if (a !== undefined && a !== null && a !== '') return a
           if (b !== undefined && b !== null && b !== '') return b
@@ -258,19 +273,31 @@ window.__ModuleLoader__.load({
           const error = errPair[0]
           const setError = errPair[1]
 
-          const colPair = React.useState({})
-          const collapsed = colPair[0]
-          const setCollapsed = colPair[1]
+          // Collapsed sections, Finished filters and Running mode live OUTSIDE
+          // the component, keyed by the watched session, because the dock
+          // tears the tab body down whenever the user swaps sessions — any
+          // useState here would silently reset on every switch. One render
+          // counter forces the re-render the plain-object store cannot.
+          const uiPair = React.useState(0)
+          const bumpUi = uiPair[1]
+          const ui = uiStateFor(anchor)
+          const collapsed = ui.collapsed
+          const showFin = ui.showFin
+          const runningMode = ui.runningMode
+          const setCollapsed = function (updater) {
+            ui.collapsed = typeof updater === 'function' ? updater(ui.collapsed) : updater
+            bumpUi(function (n) { return n + 1 })
+          }
+          const setShowFin = function (updater) {
+            ui.showFin = typeof updater === 'function' ? updater(ui.showFin) : updater
+            bumpUi(function (n) { return n + 1 })
+          }
+          const setRunningMode = function (updater) {
+            ui.runningMode = typeof updater === 'function' ? updater(ui.runningMode) : updater
+            bumpUi(function (n) { return n + 1 })
+          }
 
-          const finPair = React.useState({})
-          const showFin = finPair[0]
-          const setShowFin = finPair[1]
-
-          const cacheBox = React.useState(function () { return new Map() })[0]
-
-          const runPair = React.useState(false)
-          const runningMode = runPair[0]
-          const setRunningMode = runPair[1]
+          const cacheBox = snapshotCache
 
           const liveSeenBox = React.useState(function () { return new Map() })[0]
           const endObsBox = React.useState(function () { return new Map() })[0]
@@ -339,10 +366,9 @@ window.__ModuleLoader__.load({
             else setDataState(undefined)
           }, [anchor])
 
-          React.useEffect(function () {
-            setCollapsed({})
-            setShowFin({})
-          }, [anchor])
+          // No collapse/showFin reset on anchor change: that state is keyed by
+          // session in `uiStates`, so swapping sessions restores it. The old
+          // reset here is what silently cleared it on every switch.
 
           React.useEffect(function () {
             if (anchor === undefined) return

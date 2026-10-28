@@ -220,6 +220,13 @@ Client-side, these are deliberate; do not "clean them up":
   capsule and only left dead space once the label became `Subagents`.
 - No refresh button and no "2s refresh" caption: the 2 s poll is the only
   refresh path.
+- **Per-session view state.** Collapsed sections, `Finished` filters and
+  Running mode live in `uiStates` — a Map keyed by the watched session id —
+  outside the component, with the snapshot cache beside it. The dock remounts
+  the tab body on every session swap, so component `useState` would reset the
+  tree on each switch; do not move this state back into the component, and do
+  not reintroduce an `[anchor]` effect that clears it. The store is in-memory
+  only, so a page reload resets it (intended).
 
 ## Repo hygiene
 
