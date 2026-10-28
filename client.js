@@ -16,33 +16,33 @@ window.__ModuleLoader__.load({
 `.sgp-headerbtn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--dsw-alias-border-l2);min-width:111px;height:32px;padding:6px 12px;border-radius:18px;background:transparent;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);font-size:13px;font-weight:400;line-height:20px;cursor:pointer}
 .sgp-headerbtn:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-headerbtn span{white-space:nowrap}
-.sgp-root{position:fixed;z-index:61;pointer-events:auto;display:flex;flex-direction:column;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-overlay);box-shadow:0 14px 36px rgba(0,0,0,.22);overflow:hidden}
-.sgp-titlebar{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:grab;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);user-select:none}
+.sgp-root{position:fixed;z-index:61;pointer-events:auto;display:flex;flex-direction:column;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 14px 36px rgba(0,0,0,.3);overflow:hidden;--sgp-lift:color-mix(in srgb,var(--dsw-alias-label-primary) 5%,var(--dsw-alias-bg-layer-1));--sgp-chip:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-1));--sgp-raised:color-mix(in srgb,var(--dsw-alias-label-primary) 12%,var(--dsw-alias-bg-layer-1))}
+.sgp-titlebar{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:grab;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--sgp-lift);user-select:none}
 .sgp-titlebar.sgp-dragging{cursor:grabbing}
 .sgp-titledot{width:8px;height:8px;border-radius:50%;flex:none}
 .sgp-titletext{font-size:12.5px;font-weight:600;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;cursor:pointer}
 .sgp-titletext:hover{color:var(--dsw-alias-brand-primary)}
-.sgp-count{flex:none;font-size:11px;color:var(--dsw-alias-state-success-primary);white-space:nowrap}
+.sgp-count{flex:none;font-size:11px;color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--dsw-alias-label-primary));white-space:nowrap}
 .sgp-tbtn{flex:none;border:none;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;padding:3px 6px;border-radius:6px}
-.sgp-tbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
+.sgp-tbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-body{flex:1;overflow:auto;padding:5px 4px 8px}
 .sgp-row{display:flex;align-items:center;gap:6px;height:25px;border-radius:6px;cursor:pointer;padding-right:4px;color:var(--dsw-alias-label-primary)}
-.sgp-row:hover{background:var(--dsw-alias-bg-layer-2)}
-.sgp-rootrow{font-weight:600;margin-bottom:3px;background:var(--dsw-alias-bg-layer-1)}
+.sgp-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.sgp-rootrow{font-weight:600;margin-bottom:3px;background:var(--sgp-lift)}
 .sgp-current{outline:1px solid var(--dsw-alias-brand-primary);outline-offset:-1px}
 .sgp-chev{width:18px;height:20px;flex:none;cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:11px;display:flex;align-items:center;justify-content:center;border-radius:4px}
-.sgp-chev:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
-.sgp-chev-empty{cursor:default;color:var(--dsw-alias-border-l1)}
-.sgp-chev-empty:hover{background:transparent;color:var(--dsw-alias-border-l1)}
+.sgp-chev:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
+.sgp-chev-empty{cursor:default;color:var(--dsw-alias-label-tertiary)}
+.sgp-chev-empty:hover{background:transparent;color:var(--dsw-alias-label-tertiary)}
 .sgp-dot{width:8px;height:8px;border-radius:50%;flex:none}
 .sgp-sdot-working{background:var(--dsw-alias-state-success-primary)}
-.sgp-sdot-idle{background:var(--dsw-alias-brand-primary);opacity:.65}
-.sgp-sdot-inactive{background:transparent;box-shadow:inset 0 0 0 1px var(--dsw-alias-label-secondary);opacity:.7}
-.sgp-sdot-recent{background:var(--dsw-alias-label-tertiary)}
-.sgp-sdot-fin{background:var(--dsw-alias-label-tertiary)}
+.sgp-sdot-idle{background:var(--dsw-alias-brand-primary);opacity:.9}
+.sgp-sdot-inactive{background:transparent;box-shadow:inset 0 0 0 1.5px var(--dsw-alias-label-secondary);opacity:1}
+.sgp-sdot-recent{background:var(--dsw-alias-label-secondary)}
+.sgp-sdot-fin{background:var(--dsw-alias-label-secondary)}
 .sgp-sdot-corrupt,.sgp-sdot-unavailable{background:var(--dsw-alias-state-error-primary)}
 .sgp-anim-working{animation:sgp-pulse 1.5s ease-in-out infinite}
-@keyframes sgp-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes sgp-pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .sgp-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;font-size:12.5px}
 .sgp-diag{color:var(--dsw-alias-label-secondary);text-decoration:line-through}
 .sgp-chip{flex:none;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary)}
@@ -52,13 +52,13 @@ window.__ModuleLoader__.load({
 .sgp-ring{display:block}
 .sgp-ring-track{fill:none;stroke:var(--dsw-alias-border-l3);stroke-width:2px}
 .sgp-ring-fill{fill:none;stroke:var(--dsw-alias-label-tertiary);stroke-width:2px;stroke-linecap:round}
-.sgp-rtip{position:absolute;bottom:calc(100% + 6px);right:-3px;z-index:100;box-sizing:border-box;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-tertiary);cursor:default;border-radius:10px;padding:6px 10px;font-size:12px;line-height:18px;white-space:nowrap;pointer-events:none;display:flex;align-items:baseline}
+.sgp-rtip{position:absolute;bottom:calc(100% + 6px);right:-3px;z-index:100;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--sgp-raised);box-shadow:0 10px 28px rgba(0,0,0,.45);color:var(--dsw-alias-label-secondary);cursor:default;border-radius:10px;padding:6px 10px;font-size:12px;line-height:18px;white-space:nowrap;pointer-events:none;display:flex;align-items:baseline}
 .sgp-rtip-below{bottom:auto;top:calc(100% + 6px)}
 .sgp-rtip-pct{color:var(--dsw-alias-label-primary);font-weight:500}
 .sgp-rtip-rest{margin-left:3px}
 .sgp-rtip-fig{margin-left:10px;padding-left:10px;border-left:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;font-weight:500}
-.sgp-subcount{flex:none;font-size:10.5px;min-width:16px;text-align:center;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border-radius:999px;padding:1px 6px}
-.sgp-row:hover .sgp-subcount{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-overlay)}
+.sgp-subcount{flex:none;font-size:10.5px;min-width:16px;text-align:center;color:var(--dsw-alias-label-secondary);background:var(--sgp-chip);border-radius:999px;padding:1px 6px}
+.sgp-row:hover .sgp-subcount{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-1)}
 .sgp-finrow{color:var(--dsw-alias-label-secondary);font-weight:600}
 .sgp-note{padding:14px 16px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.5}
 .sgp-footerline{display:flex;align-items:center;gap:6px;border-top:1px solid var(--dsw-alias-border-l1);padding:4px 10px;color:var(--dsw-alias-label-secondary);font-size:11px;white-space:nowrap;overflow:hidden}
@@ -67,7 +67,7 @@ window.__ModuleLoader__.load({
 .sgp-footbtn{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:7px 14px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:12.5px;border-radius:8px}
 .sgp-footbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
 .sgp-runbtn{display:inline-flex;align-items:center;gap:5px;flex:none;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
-.sgp-runbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
+.sgp-runbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-runbtn.sgp-runbtn-on{border-color:var(--dsw-alias-state-success-primary);color:var(--dsw-alias-state-success-primary)}
 .sgp-runbtn .sgp-runbtn-dot{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px var(--dsw-alias-label-secondary)}
 .sgp-runbtn.sgp-runbtn-on .sgp-runbtn-dot{background:var(--dsw-alias-state-success-primary);box-shadow:none}
@@ -81,6 +81,28 @@ window.__ModuleLoader__.load({
           if (!resp.ok) throw new Error('snapshot request failed: HTTP ' + resp.status)
           return resp.json()
         })
+    }
+
+    // Token counts for the context tooltip. One decimal below 100k and for
+    // millions, whole numbers from 100k up; a trailing ".0" is dropped, so the
+    // decimal appears only when the fraction is non-zero: 999 -> "999",
+    // 12500 -> "12.5k", 128000 -> "128k", 1048576 -> "1m", 1500000 -> "1.5m".
+    // The 999.5k boundary rolls into millions rather than printing "1000k".
+    // Exposed on the plugin object as `__formatTokens` so test/ can exercise
+    // it without a browser; it is not part of the plugin contract.
+    const trimZero = function (s) {
+      return s.endsWith('.0') ? s.slice(0, -2) : s
+    }
+    const formatTokens = function (v) {
+      if (!isFinite(v)) return '?'
+      if (v >= 1000000) return trimZero((v / 1000000).toFixed(1)) + 'm'
+      if (v >= 1000) {
+        const k = v / 1000
+        if (Math.round(k) >= 1000) return trimZero((v / 1000000).toFixed(1)) + 'm'
+        if (Math.round(k) >= 100) return String(Math.round(k)) + 'k'
+        return trimZero((Math.round(k * 10) / 10).toFixed(1)) + 'k'
+      }
+      return String(Math.round(v))
     }
 
     return {
@@ -139,14 +161,6 @@ window.__ModuleLoader__.load({
 
         const RING_R = 5.5
         const RING_C = 2 * Math.PI * RING_R
-        const fmtTokens = function (v) {
-          if (!isFinite(v)) return '?'
-          if (v >= 1000) {
-            const k = v / 1000
-            return (k >= 100 ? String(Math.round(k)) : (Math.round(k * 10) / 10).toFixed(1)) + 'k'
-          }
-          return String(Math.round(v))
-        }
         const occupancyOf = function (used, win) {
           if (!isFinite(used) || !(win > 0)) return undefined
           return {
@@ -190,7 +204,7 @@ window.__ModuleLoader__.load({
             },
               React.createElement('span', { className: 'sgp-rtip-pct' }, occ.percent + '%'),
               React.createElement('span', { className: 'sgp-rtip-rest' }, 'of context used'),
-              React.createElement('span', { className: 'sgp-rtip-fig' }, '~' + fmtTokens(occ.used) + ' / ' + fmtTokens(occ.window)),
+              React.createElement('span', { className: 'sgp-rtip-fig' }, '~' + formatTokens(occ.used) + ' / ' + formatTokens(occ.window)),
             ) : null,
           )
         }
@@ -862,6 +876,11 @@ window.__ModuleLoader__.load({
 
         console.log('[sgtree] client half ready')
       },
+
+      // Test seam (see test/token-format.test.js): the client factory cannot
+      // import Node modules, so the pure formatter rides on the plugin object
+      // where a test can reach it. Not part of the plugin contract.
+      __formatTokens: formatTokens,
     }
   }
 })

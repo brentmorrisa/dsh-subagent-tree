@@ -4,6 +4,49 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-10-27
+
+### Changed
+
+- **The panel now sits on the app's raised surface instead of the overlay
+  surface.** `bg-overlay` is the lightest surface in the dark theme (`#61666b`
+  against a `#151517` app base), which made the panel the brightest thing on
+  screen. The body is `bg-layer-1` (`#232324`); the title bar and root row are
+  a 5 % mix of the label color over it, so they lighten on dark and darken on
+  light; hovers moved to `interactive-bg-hover` so they stay visible in both
+  themes; the count badge is a 9 % chip. Measured dark-theme contrast improved
+  across the board — secondary text 3.85 → 10.42, tertiary 2.72 → 7.36, the
+  green working count 2.55 → 6.89, error text 1.76 → 4.77.
+- The context tooltip is **opaque**. It used the app's `--dsw-specific-menu`
+  token, which is 94 % alpha, so panel content showed through it. It is now a
+  raised mix surface with a real border and shadow, and its plain text moved
+  from `tertiary` to `secondary`.
+- Status ink is brighter: `inactive` is a 1.5 px hollow `label-secondary` ring
+  at full opacity (was 1 px at 70 %), finished/recent dots are
+  `label-secondary` (was `label-tertiary`), and the working dot's pulse trough
+  is 0.6 opacity instead of 0.35, which had been blending the green into the
+  panel.
+- The chevron-slot placeholder (`•` on leaves, `○` on the root) is
+  `label-tertiary`. It was painted with `border-l1`, a 6 % alpha border token,
+  which made the markers effectively invisible.
+- The "N working" count is mixed 40 % toward the label color, so it reads at
+  7.95:1 in dark (was 5.95) and 4.67:1 in light (was 2.05).
+
+### Fixed
+
+- Context figures switch to millions: `1048576` now renders `1m` instead of
+  `1049k`, and `1500000` renders `1.5m`. A trailing `.0` is dropped at both the
+  thousand and million steps, so the decimal appears only when the fraction is
+  non-zero, and 999.5k rolls into `1m` rather than printing `1000k`.
+
+### Added
+
+- `npm test` (`node --test`) with the first test suite: `test/token-format.test.js`
+  covers the formatter's unit boundaries and loads `client.js` through a stubbed
+  `window.__ModuleLoader__`, so it exercises the shipped bundle. The pure
+  formatter is exposed on the plugin object as `__formatTokens` for that purpose
+  (a test seam, not plugin contract).
+
 ## [1.0.1] — 2026-10-27
 
 ### Fixed

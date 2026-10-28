@@ -95,13 +95,15 @@ row, remove it before enabling the bundle form (warning above).
    directory so `type: module` is honored for the ESM file).
 2. `node --input-type=module -e "const m = await
    import('<abs>/index.js'); console.log(m.inject, typeof m.apply)"`.
-3. Composition check — `--dump-config` is **refused for the `desktop`
+3. `npm test` (`node --test`) — the formatter suite in `test/` must pass.
+   It is Node-only and offline.
+4. Composition check — `--dump-config` is **refused for the `desktop`
    profile** by design. Either install into a throwaway non-desktop profile and
    run `dsh --profile <scratch> --dump-config` (must name `dsh-subagent-tree`
    exactly once and warn nothing), or probe the running app:
    `GET http://127.0.0.1:<port>/sgtree/snapshot?rootId=<sessionId>` must answer
    JSON carrying `revision`; 404 means the host half did not activate.
-4. After deploy + restart + refresh: host console marker
+5. After deploy + restart + refresh: host console marker
    `[sgtree] host half ready: /sgtree/snapshot route registered`; browser
    devtools marker `[sgtree] client half ready`; a "Subagent tree" capsule
    appears in the session header immediately left of "Session log", and the
@@ -159,12 +161,26 @@ Client-side, these are deliberate; do not "clean them up":
   visible on dark backgrounds).
 - Context ring: 14×14 viewBox, R=5.5, `rotate(-90 7 7)`, dasharray
   `C*pct/100 ' ' C`, track `border-l3`, fill `label-tertiary`; tooltip text
-  `N% of context used` (a space after `%`) plus `~used / window` tokens;
+  `N% of context used` (a space after `%`) plus `~used / window` tokens
+  formatted by `formatTokens` — `12.5k`, `128k`, `1m`, `1.5m`; a `.0` fraction
+  is dropped, and 999.5k rolls to `1m` rather than printing `1000k`;
   18 px ringslot reserved at the right edge even when the ring is absent;
   an always-present meter/count line at the panel's right edge.
-- Dots: solid grey for finished and for recent finishers; `Finished [X]`
-  rows single-level indented at the top of their section; revealed subtrees
-  render collapsed; `X` = that session's hidden finished count.
+- Panel surface (the dark theme is the reference): body `bg-layer-1`, title
+  bar and root row a 5 % mix of `label-primary` over the body, hover
+  `interactive-bg-hover`, badge chip 9 %, tooltip an **opaque** 12 % "raised"
+  surface. Never paint the panel with `bg-overlay` (it is the lightest surface
+  in the dark theme, and the panel is meant to sit near the app background),
+  never give a floating surface the translucent `--dsw-specific-menu` token
+  (94 % alpha shows the panel through it), and never use a `border-*` alpha as
+  ink — the chevron-slot placeholder (`•`/`○`) was invisible for exactly that
+  reason and is now `label-tertiary`.
+- Dots: solid grey for finished and for recent finishers
+  (`label-secondary`); `inactive` is a 1.5 px hollow `label-secondary` ring at
+  full opacity; the working dot pulses opacity 1 → 0.6 (never → 0.35, which
+  blended into the panel). `Finished [X]` rows single-level indented at the top
+  of their section; revealed subtrees render collapsed;
+  `X` = that session's hidden finished count.
 - Finished threshold: 10 minutes (`RECENT_MS`). Resident `idle` agents drain to
   Finished after `IDLE_STALE_MS` = 2 min via the `agent/status` idle map — the
   event payload carries the agent because the loop dispatches through
@@ -193,8 +209,12 @@ Client-side, these are deliberate; do not "clean them up":
 
 ## Repo hygiene
 
-- No build system: nothing to regenerate; CI (if added) should run only the
-  validation checklist (steps 1–3) — they are Node-only and offline.
+- No build system: nothing to regenerate. `npm test` (`node --test`) runs the
+  offline suite in `test/`; it loads `client.js` through a stubbed
+  `window.__ModuleLoader__` and reaches the pure formatter via the
+  `__formatTokens` seam on the plugin object (a test seam, not plugin
+  contract). CI should run that plus the validation checklist. `test/` is
+  deliberately outside the `files` whitelist, so it never ships in the tarball.
 - Do not commit the installed copies under `%USERPROFILE%\.dsh` (user data).
 - The `sgtree` dynamic Cordis plugin in live sessions was the authoring
   vehicle; its definitions die with the process by design. Do not add it
