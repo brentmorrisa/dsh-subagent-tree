@@ -1,12 +1,12 @@
 # dsh-subagent-tree
 
-A **Subagent tree panel** for the DeepSeek Harness (DSH) web GUI — a floating,
-persistent window that shows every subagent session you delegated under a
+A **Subagent tree panel** for the DeepSeek Harness (DSH) web GUI — a tab in the
+right sidebar that shows every subagent session you delegated under a
 conversation, arranged as a live tree.
 
 It is a dual-half Cordis plugin package: a host half (`index.js`) that watches
 the subagent registry and serves a snapshot route, and a browser half
-(`client.js`) that renders the panel. One composition row mounts both.
+(`client.js`) that renders the tab. One composition row mounts both.
 
 ## Features
 
@@ -26,11 +26,13 @@ the subagent registry and serves a snapshot route, and a browser half
 - **Running mode** — an optional compressed view: sections auto-expand while
   work runs, collapse when it finishes, finishers linger 10 s, the Finished
   filters stay out of view, and everything that isn't running is hidden.
-- **Drag / resize** — the panel is movable and resizable; the layout is
-  remembered by the browser, not the harness.
-- Panel chrome and a sidebar footer button both open it; the primary opener
-  is a "Subagent tree" capsule in the session header, immediately to the
-  left of the "Session log" button.
+- **Docked, not floating** — the tree is a right-sidebar tab docked beside
+  Files, Browser, Terminal and the subagent chat. The dock owns sizing,
+  splitting and layout persistence per session; there is nothing to drag.
+- A **"Subagents" capsule in the session header** (immediately left of the
+  "Session log" button) toggles it: with no tab it opens one and reveals the
+  column; with the column showing it collapses the column and leaves the tab
+  in place. Closing the tab is the tab's own ✕.
 
 ### How a row's status is derived
 
@@ -58,7 +60,8 @@ again, and stamps for disposed agents are dropped each poll.
   0.2.1-rc.3**, whose profile is named `desktop`.
 - The plugin consumes the harness's own services — no other setup:
   - host half: `subagents`, `webServer`
-  - browser half: `sessions`, `slots`, `uiWorkspace`
+  - browser half: `sessions`, `slots`, `uiWorkspace`, `sidebarRight`,
+    `sidebarRightTabs`
 - **The `web` profile no longer exists in the desktop app.** Older DSH
   releases ran as a Node service with a free-named profile (`dsh web`); the
   desktop app reserves the single `desktop` profile and manages it itself.
@@ -138,9 +141,10 @@ The profile's composed tree cannot be dumped on the desktop app
 - **Browser console** — a successful boot logs `[sgtree] client half ready`,
   and the host logs
   `[sgtree] host half ready: /sgtree/snapshot route registered`.
-- **UI** — a "Subagent tree" capsule appears in the session header immediately
-  left of the "Session log" button; the sidebar footer button opens the panel
-  too.
+- **UI** — a "Subagents" capsule appears in the session header immediately
+  left of the "Session log" button. Clicking it opens the tab and reveals the
+  column; clicking it again while the column is showing collapses the column
+  and leaves the tab in the strip.
 
 ## Diagnostics
 

@@ -13,19 +13,11 @@ window.__ModuleLoader__.load({
     const React = require('react')
 
     const CSS =
-`.sgp-headerbtn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--dsw-alias-border-l2);min-width:111px;height:32px;padding:6px 12px;border-radius:18px;background:transparent;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);font-size:13px;font-weight:400;line-height:20px;cursor:pointer}
+`.sgp-headerbtn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--dsw-alias-border-l2);height:32px;padding:6px 12px;border-radius:18px;background:transparent;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);font-size:13px;font-weight:400;line-height:20px;cursor:pointer}
 .sgp-headerbtn:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-headerbtn span{white-space:nowrap}
-.sgp-root{position:fixed;z-index:61;pointer-events:auto;display:flex;flex-direction:column;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 14px 36px rgba(0,0,0,.3);overflow:hidden;--sgp-lift:color-mix(in srgb,var(--dsw-alias-label-primary) 5%,var(--dsw-alias-bg-layer-1));--sgp-chip:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-1));--sgp-raised:color-mix(in srgb,var(--dsw-alias-label-primary) 12%,var(--dsw-alias-bg-layer-1))}
-.sgp-titlebar{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:grab;border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--sgp-lift);user-select:none}
-.sgp-titlebar.sgp-dragging{cursor:grabbing}
-.sgp-titledot{width:8px;height:8px;border-radius:50%;flex:none}
-.sgp-titletext{font-size:12.5px;font-weight:600;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;cursor:pointer}
-.sgp-titletext:hover{color:var(--dsw-alias-brand-primary)}
-.sgp-count{flex:none;font-size:11px;color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 60%,var(--dsw-alias-label-primary));white-space:nowrap}
-.sgp-tbtn{flex:none;border:none;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;padding:3px 6px;border-radius:6px}
-.sgp-tbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
-.sgp-body{flex:1;overflow:auto;padding:5px 4px 8px}
+.sgp-tab{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;background:var(--dsw-alias-bg-layer-1);--sgp-lift:color-mix(in srgb,var(--dsw-alias-label-primary) 5%,var(--dsw-alias-bg-layer-1));--sgp-chip:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-1));--sgp-raised:color-mix(in srgb,var(--dsw-alias-label-primary) 12%,var(--dsw-alias-bg-layer-1))}
+.sgp-body{flex:1;min-height:0;overflow:auto;padding:5px 4px 8px}
 .sgp-row{display:flex;align-items:center;gap:6px;height:25px;border-radius:6px;cursor:pointer;padding-right:4px;color:var(--dsw-alias-label-primary)}
 .sgp-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-rootrow{font-weight:600;margin-bottom:3px;background:var(--sgp-lift)}
@@ -63,9 +55,6 @@ window.__ModuleLoader__.load({
 .sgp-note{padding:14px 16px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:1.5}
 .sgp-footerline{display:flex;align-items:center;gap:6px;border-top:1px solid var(--dsw-alias-border-l1);padding:4px 10px;color:var(--dsw-alias-label-secondary);font-size:11px;white-space:nowrap;overflow:hidden}
 .sgp-errmsg{color:var(--dsw-alias-state-error-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sgp-resize{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--dsw-alias-border-l2) 50%)}
-.sgp-footbtn{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:7px 14px;border:none;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:12.5px;border-radius:8px}
-.sgp-footbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
 .sgp-runbtn{display:inline-flex;align-items:center;gap:5px;flex:none;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .sgp-runbtn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .sgp-runbtn.sgp-runbtn-on{border-color:var(--dsw-alias-state-success-primary);color:var(--dsw-alias-state-success-primary)}
@@ -105,8 +94,14 @@ window.__ModuleLoader__.load({
       return String(Math.round(v))
     }
 
+    // Right-sidebar tab identity. The tab type `id` is also the key of the
+    // body registration under `sidebar.right.pane.tab`; the `kind` is what
+    // `sidebarRight.openTab()` names.
+    const TAB_ID = 'dsh-subagent-tree'
+    const TAB_KIND = 'sgtree'
+
     return {
-      inject: ['sessions', 'slots', 'uiWorkspace'],
+      inject: ['sessions', 'slots', 'uiWorkspace', 'sidebarRight', 'sidebarRightTabs'],
       apply: function (ctx) {
         const slots = ctx.get('slots')
         if (slots === undefined) return
@@ -121,23 +116,30 @@ window.__ModuleLoader__.load({
           }
         }, 'subagent-tree: css')
 
-        const shared = { open: false, listeners: [] }
-        const setOpen = function (value) {
-          shared.open = value
-          const list = shared.listeners.slice()
-          for (const fn of list) fn()
-        }
-        const usePanelOpen = function () {
-          const pair = React.useState(shared.open)
-          React.useEffect(function () {
-            const listener = function () { pair[1](shared.open) }
-            shared.listeners.push(listener)
-            return function () {
-              const idx = shared.listeners.indexOf(listener)
-              if (idx >= 0) shared.listeners.splice(idx, 1)
+        // Header capsule toggle, in the user's terms:
+        //   - no subagents tab  -> open it and reveal the column
+        //   - tab present, column showing -> collapse the column, KEEP the tab
+        //   - tab present, column hidden  -> openTab, which reveals the column
+        //     and refocuses the existing tab
+        // Closing the tab is the tab's own ✕, never this button.
+        const toggleTree = function (sessionId) {
+          const sidebar = ctx.get('sidebarRight')
+          if (sidebar === undefined || typeof sidebar.openTab !== 'function') return
+          try {
+            const tabs = typeof sidebar.tabsIn === 'function' && sessionId !== undefined
+              ? sidebar.tabsIn(sessionId)
+              : []
+            let mine
+            for (const tab of tabs || []) {
+              if (tab !== undefined && tab !== null && tab.kind === TAB_KIND) { mine = tab; break }
             }
-          }, [])
-          return pair[0]
+            const expanded = typeof sidebar.isExpanded === 'function' && sidebar.isExpanded() === true
+            if (mine !== undefined && expanded === true && typeof sidebar.toggleExpanded === 'function') {
+              sidebar.toggleExpanded()
+              return
+            }
+            sidebar.openTab(TAB_KIND)
+          } catch (err) {}
         }
 
         const firstText = function (a, b, c) {
@@ -211,10 +213,10 @@ window.__ModuleLoader__.load({
 
         const Entry = function (propsRaw) {
           const useSessionsProp = propsRaw && propsRaw.useSessions
-          const open = usePanelOpen()
-          // The current session comes from the Workspace selection store: the
-          // session-list snapshot no longer carries a `current` field, and this
-          // overlay is root-scoped so it receives no `sessionId` slot prop.
+          // The tab body is rendered inside one session's right sidebar, so
+          // that session is authoritative. The Workspace selection store stays
+          // as the fallback for the header/footer openers' session.
+          const tabSession = propsRaw && typeof propsRaw.sessionId === 'string' ? propsRaw.sessionId : undefined
           const selectionPair = React.useState(function () {
             const ws = ctx.get('uiWorkspace')
             const store = ws === undefined ? undefined : ws.selection
@@ -231,7 +233,9 @@ window.__ModuleLoader__.load({
               setSelection(store.getSnapshot())
             })
           }, [])
-          const current = selection === undefined || selection === null ? undefined : selection.sessionId
+          const current = tabSession !== undefined
+            ? tabSession
+            : (selection === undefined || selection === null ? undefined : selection.sessionId)
 
           const anchorState = React.useState(undefined)
           const anchor = anchorState[0]
@@ -262,20 +266,7 @@ window.__ModuleLoader__.load({
           const showFin = finPair[0]
           const setShowFin = finPair[1]
 
-          const focusPair = React.useState(0)
-          const focusTick = focusPair[0]
-          const bumpFocus = focusPair[1]
-
-          const dragPair = React.useState(false)
-          const dragging = dragPair[0]
-          const setDragging = dragPair[1]
-
           const cacheBox = React.useState(function () { return new Map() })[0]
-          const movingBox = React.useState(function () { return { active: false, pending: false, downX: 0, downY: 0, offTop: 0, startX: 0, startRight: 0 } })[0]
-          const sizingBox = React.useState(function () { return { active: false, startX: 0, startY: 0, w: 0, h: 0 } })[0]
-          const geoPairs = React.useState(function () { return { top: 72, right: 18, width: 400, height: 470 } })
-          const geo = geoPairs[0]
-          const setGeo = geoPairs[1]
 
           const runPair = React.useState(false)
           const runningMode = runPair[0]
@@ -354,7 +345,7 @@ window.__ModuleLoader__.load({
           }, [anchor])
 
           React.useEffect(function () {
-            if (!open || anchor === undefined) return
+            if (anchor === undefined) return
             let cancelled = false
             let busy = false
             const load = function () {
@@ -401,7 +392,7 @@ window.__ModuleLoader__.load({
               cancelled = true
               window.clearInterval(timer)
             }
-          }, [open, anchor, focusTick])
+          }, [anchor])
 
           const selectAnchor = function () {
             if (anchor === undefined) return
@@ -454,14 +445,7 @@ window.__ModuleLoader__.load({
 
           flagsBox.running = runningMode
 
-          if (!open) {
-            return null
-          }
-
           const snap = snapPre
-          const workingCount = snap
-            ? snap.nodes.filter(function (n) { return n.status === 'working' }).length
-            : 0
 
           const byParent = new Map()
           const liveCounts = new Map()
@@ -718,102 +702,7 @@ window.__ModuleLoader__.load({
             bodyChildren = pieces
           }
 
-          const onBtnPointerDown = function (e) { e.stopPropagation() }
-          const onBarPointerDown = function (e) {
-            if (e.button !== undefined && e.button !== 0) return
-            movingBox.active = true
-            movingBox.pending = true
-            movingBox.downX = e.clientX
-            movingBox.downY = e.clientY
-            movingBox.offTop = e.clientY - geo.top
-            movingBox.startX = e.clientX
-            movingBox.startRight = geo.right
-          }
-          const onBarPointerMove = function (e) {
-            if (!movingBox.active) return
-            if (movingBox.pending === true) {
-              if (Math.abs(e.clientX - movingBox.downX) < 4 && Math.abs(e.clientY - movingBox.downY) < 4) return
-              movingBox.pending = false
-              try { e.currentTarget.setPointerCapture(e.pointerId) } catch (err) {}
-              setDragging(true)
-            }
-            setGeo({
-              top: Math.max(0, Math.min(2200, e.clientY - movingBox.offTop)),
-              right: Math.max(0, Math.min(2400, movingBox.startRight + (movingBox.startX - e.clientX))),
-              width: geo.width,
-              height: geo.height,
-            })
-          }
-          const onBarPointerUp = function (e) {
-            if (movingBox.active) {
-              movingBox.active = false
-              movingBox.pending = false
-              setDragging(false)
-              try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) {}
-            }
-          }
-          const onResizeDown = function (e) {
-            e.stopPropagation()
-            sizingBox.active = true
-            sizingBox.startX = e.clientX
-            sizingBox.startY = e.clientY
-            sizingBox.w = geo.width
-            sizingBox.h = geo.height
-            try { e.currentTarget.setPointerCapture(e.pointerId) } catch (err) {}
-          }
-          const onResizeMove = function (e) {
-            if (!sizingBox.active) return
-            setGeo({
-              top: geo.top,
-              right: geo.right,
-              width: Math.max(280, Math.min(1400, sizingBox.w + (e.clientX - sizingBox.startX))),
-              height: Math.max(200, Math.min(2200, sizingBox.h + (e.clientY - sizingBox.startY))),
-            })
-          }
-          const onResizeUp = function (e) {
-            sizingBox.active = false
-            try { e.currentTarget.releasePointerCapture(e.pointerId) } catch (err) {}
-          }
-
-          return React.createElement('div', {
-            className: 'sgp-root',
-            role: 'dialog',
-            'aria-label': 'Subagent tree panel',
-            style: {
-              top: geo.top,
-              right: geo.right,
-              width: geo.width,
-              height: geo.height,
-              maxHeight: 'calc(100vh - 40px)',
-            },
-          },
-            React.createElement('div', {
-              className: 'sgp-titlebar' + (dragging ? ' sgp-dragging' : ''),
-              onPointerDown: onBarPointerDown,
-              onPointerMove: onBarPointerMove,
-              onPointerUp: onBarPointerUp,
-            },
-              React.createElement('span', {
-                className: 'sgp-titledot' + (snap !== undefined ? ' sgp-sdot-' + snap.root.status : ' sgp-sdot-inactive'),
-                title: 'Watched session status',
-              }),
-              React.createElement('span', {
-                className: 'sgp-titletext',
-                onClick: function () { selectAnchor() },
-                title: anchor !== undefined ? 'Watched session — ' + rootDetail : 'No session',
-              }, 'Subagents'),
-              workingCount > 0 ? React.createElement('span', { className: 'sgp-count' }, workingCount + ' working') : null,
-              React.createElement('button', {
-                type: 'button', className: 'sgp-tbtn', title: 'Refresh now',
-                onPointerDown: onBtnPointerDown,
-                onClick: function () { bumpFocus(function (t) { return t + 1 }) },
-              }, '\u27F3'),
-              React.createElement('button', {
-                type: 'button', className: 'sgp-tbtn', title: 'Close',
-                onPointerDown: onBtnPointerDown,
-                onClick: function () { setOpen(false) },
-              }, '\u2715'),
-            ),
+          return React.createElement('div', { className: 'sgp-tab' },
             React.createElement('div', { className: 'sgp-body' }, bodyChildren),
             React.createElement('div', { className: 'sgp-footerline' },
               React.createElement('button', {
@@ -827,49 +716,46 @@ window.__ModuleLoader__.load({
                 React.createElement('span', { className: 'sgp-runbtn-dot' }),
                 'Running',
               ),
-              React.createElement('span', {}, '2s refresh'),
               error !== undefined ? React.createElement('span', { className: 'sgp-errmsg', title: error }, error) : null,
             ),
-            React.createElement('div', {
-              className: 'sgp-resize',
-              onPointerDown: onResizeDown,
-              onPointerMove: onResizeMove,
-              onPointerUp: onResizeUp,
-            }),
           )
         }
 
-        slots.inject('shell.overlay', function () {
+        // One tab type in the right sidebar, plus its body keyed by the type
+        // id (the sidebar renders bodies through the keyed
+        // `sidebar.right.pane.tab` seat, so no host edit is involved).
+        const tabTypes = ctx.get('sidebarRightTabs')
+        if (tabTypes !== undefined) {
+          ctx.effect(function () {
+            return tabTypes.register({
+              id: TAB_ID,
+              kind: TAB_KIND,
+              title: function () { return 'Subagents' },
+            })
+          }, 'subagent-tree: tab type')
+        }
+
+        slots.inject('sidebar.right.pane.tab', function () {
           return slots.register(
-            { name: 'shell.overlay', id: 'sgtree-panel', order: 30, label: 'Subagent tree panel' },
+            { name: 'sidebar.right.pane.tab', key: TAB_ID },
             function (props) { return React.createElement(Entry, props) },
           )
         })
 
         slots.inject('conversation.session.header.utilities', function () {
           return slots.register(
-            { name: 'conversation.session.header.utilities', id: 'sgtree-header', order: -1, label: 'Subagent tree' },
-            function () {
+            { name: 'conversation.session.header.utilities', id: 'sgtree-header', order: -1, label: 'Subagents' },
+            function (props) {
+              const sessionId = props !== undefined && props !== null && typeof props.sessionId === 'string'
+                ? props.sessionId
+                : undefined
               return React.createElement('button', {
                 type: 'button',
                 className: 'sgp-headerbtn',
-                onClick: function () { setOpen(true) },
-                title: 'Open the subagent tree panel',
+                onClick: function () { toggleTree(sessionId) },
+                title: 'Show or hide subagents in the sidebar',
               },
-                React.createElement('span', null, 'Subagent tree'))
-            },
-          )
-        })
-
-        slots.inject('sidebar.footer.action', function () {
-          return slots.register(
-            { name: 'sidebar.footer.action', id: 'sgtree-open', order: 10, label: 'Subagent tree' },
-            function () {
-              return React.createElement('button', {
-                type: 'button',
-                className: 'sgp-footbtn',
-                onClick: function () { setOpen(true) },
-              }, 'Subagent tree…')
+                React.createElement('span', null, 'Subagents'))
             },
           )
         })

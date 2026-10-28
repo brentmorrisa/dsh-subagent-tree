@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] — 2026-10-27
+
+### Changed
+
+- **The tree is a right-sidebar tab instead of a floating window.** It docks
+  beside Files, Browser, Terminal and the subagent chat through the sidebar's
+  tab-type registry (`sidebarRightTabs` plus the keyed
+  `sidebar.right.pane.tab` seat), so the dock owns sizing, splitting, layout
+  persistence and closing. The drag and resize machinery, the geometry state,
+  the panel's own ✕ and the `shell.overlay` registration are gone; the browser
+  half now injects `sidebarRight` and `sidebarRightTabs`.
+- The session-header capsule reads **Subagents** (was "Subagent tree"), sizes
+  to its text — the 111 px floor that matched the Session log capsule only left
+  dead space once the label shortened — and now toggles: with no tab it opens
+  one and reveals the column; with a tab showing it collapses the column and
+  keeps the tab. Closing the tab is the tab's own ✕.
+- Removed the panel's title bar: the dock tab is the only chrome above the
+  tree. The `Subagents` tab title carries the label.
+- Removed the refresh button and the "2s refresh" caption; the 2 s poll is the
+  only refresh path.
+- Removed the sidebar footer "Subagents…" button. The header capsule is the
+  only opener, next to where the panel actually appears.
+
 ## [1.0.2] — 2026-10-27
 
 ### Changed

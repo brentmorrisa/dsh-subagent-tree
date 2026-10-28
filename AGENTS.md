@@ -105,9 +105,11 @@ row, remove it before enabling the bundle form (warning above).
    JSON carrying `revision`; 404 means the host half did not activate.
 5. After deploy + restart + refresh: host console marker
    `[sgtree] host half ready: /sgtree/snapshot route registered`; browser
-   devtools marker `[sgtree] client half ready`; a "Subagent tree" capsule
-   appears in the session header immediately left of "Session log", and the
-   sidebar footer button opens the panel too.
+   devtools marker `[sgtree] client half ready`; a "Subagents" capsule appears
+   in the session header immediately left of "Session log". Clicking it opens
+   the `Subagents` tab in the right sidebar and reveals the column; clicking it
+   again collapses the column and leaves the tab in the strip; the tab's ✕
+   closes it and the next click opens a fresh one.
 
 ## Hard constraints (breaking these breaks silently or loudly)
 
@@ -131,12 +133,14 @@ row, remove it before enabling the bundle form (warning above).
   services (`agents`, `sessionQuery`) MUST be re-read per request with
   `ctx.get` (they can mount after this row applies; a one-time capture at
   apply-time can freeze as `undefined`).
-- **Client half services:** inject `['sessions', 'slots', 'uiWorkspace']`.
-  `uiWorkspace.selection` is the only source of the current session (the
-  session-list snapshot has no `current` field, and the `shell.overlay` slot is
-  root-scoped so it gets no `sessionId` prop); navigation is
-  `uiWorkspace.openSession(idOrAddress)`, and a stale address is refreshed with
-  `sessions.refreshProjections(parentId)`.
+- **Client half services:** inject `['sessions', 'slots', 'uiWorkspace',
+  'sidebarRight', 'sidebarRightTabs']`. `uiWorkspace.selection` is the fallback
+  source of the current session when a slot gives no `sessionId`; the tab body
+  is session-scoped and takes its own `sessionId` prop, so prefer that.
+  Navigation is `uiWorkspace.openSession(idOrAddress)`, and a stale address is
+  refreshed with `sessions.refreshProjections(parentId)`. The tab is opened by
+  kind with `sidebarRight.openTab(...)`; state reads use `tabsIn(sessionId)`,
+  `isExpanded()` and `toggleExpanded()`.
 - **Route registration** goes through `ctx.webServer.register({ kind: 'exact',
   path: '/sgtree/snapshot', handler })` inside `ctx.effect(...)` so the row
   is unregistered when the effect disposes. Handler signature is Node raw
@@ -154,8 +158,9 @@ row, remove it before enabling the bundle form (warning above).
 Client-side, these are deliberate; do not "clean them up":
 
 - Root row label `Session - <ProjectName>` (workspace basename — NOT an LLM
-  call); title bar reads `Subagents`; downward-opening tooltip at the root
-  (it sits at the panel's top edge).
+  call); downward-opening tooltip at the root (it sits at the tab's top edge).
+  There is **no panel title bar**: the dock tab titled `Subagents` is the only
+  chrome above the tree.
 - Badges: `direct/total` on every section; a single number when the counts
   are equal; inverted light chip on row hover (the badge hover must be
   visible on dark backgrounds).
@@ -166,15 +171,15 @@ Client-side, these are deliberate; do not "clean them up":
   is dropped, and 999.5k rolls to `1m` rather than printing `1000k`;
   18 px ringslot reserved at the right edge even when the ring is absent;
   an always-present meter/count line at the panel's right edge.
-- Panel surface (the dark theme is the reference): body `bg-layer-1`, title
-  bar and root row a 5 % mix of `label-primary` over the body, hover
-  `interactive-bg-hover`, badge chip 9 %, tooltip an **opaque** 12 % "raised"
-  surface. Never paint the panel with `bg-overlay` (it is the lightest surface
-  in the dark theme, and the panel is meant to sit near the app background),
-  never give a floating surface the translucent `--dsw-specific-menu` token
-  (94 % alpha shows the panel through it), and never use a `border-*` alpha as
-  ink — the chevron-slot placeholder (`•`/`○`) was invisible for exactly that
-  reason and is now `label-tertiary`.
+- Panel surface (the dark theme is the reference): body `bg-layer-1`, the root
+  row a 5 % mix of `label-primary` over the body, hover `interactive-bg-hover`,
+  badge chip 9 %, tooltip an **opaque** 12 % "raised" surface. Never paint the
+  panel with `bg-overlay` (it is the lightest surface in the dark theme, and
+  the panel is meant to sit near the app background), never give a floating
+  surface the translucent `--dsw-specific-menu` token (94 % alpha shows the
+  panel through it), and never use a `border-*` alpha as ink — the
+  chevron-slot placeholder (`•`/`○`) was invisible for exactly that reason and
+  is now `label-tertiary`.
 - Dots: solid grey for finished and for recent finishers
   (`label-secondary`); `inactive` is a 1.5 px hollow `label-secondary` ring at
   full opacity; the working dot pulses opacity 1 → 0.6 (never → 0.35, which
@@ -197,15 +202,24 @@ Client-side, these are deliberate; do not "clean them up":
   text is exactly `No running subagents.` in BOTH modes — one unconditional
   string, per user preference (no onboarding copy).
 - MAX_ROWS 500 cap with a visible truncation note.
-- Drag threshold: pointer-capture engages after 4 px; title-bar buttons
-  stopPropagation so drag never eats clicks; ✕ closes, ⟳ forces a poll.
-- **Header opener instead of a floating pill:** the opener lives in
-  `conversation.session.header.utilities` (same cluster as the Session log
-  capsule), id `sgtree-header`, `order: -1` so it renders immediately LEFT of
-  "Session log"; it must look like the Session log capsule (32 px, 18px
-  radius, min-width 111px, `.sgp-headerbtn`). The sidebar footer button is
-  the secondary opener and covers the no-session hero state, where the
-  header is not rendered. Entry's closed state renders null.
+- **Docked tab, not a floating window.** The tree is a right-sidebar tab: a tab
+  type registered through `sidebarRightTabs`, with its body under the keyed
+  `sidebar.right.pane.tab` seat (`key` = the type id). There is no drag, no
+  resize handle, no geometry state and no ✕ of our own — the dock owns sizing,
+  splitting, layout persistence and closing. Do not reintroduce `shell.overlay`.
+- **One opener, and it toggles.** The `conversation.session.header.utilities`
+  capsule (`sgtree-header`, `order: -1`, label `Subagents`) is the only opener;
+  the old `sidebar.footer.action` button is gone. Its behaviour, in the user's
+  terms: **no tab** → open it and reveal the column; **tab present and column
+  showing** → collapse the column (`toggleExpanded`) and KEEP the tab; **tab
+  present and column hidden** → `openTab`, which reveals it. Closing the tab is
+  the tab's own ✕, never this button. No pressed/active indicator is required
+  (plain toggle, read state at click time).
+- The capsule is content-sized: 32 px tall, 18 px radius, `.sgp-headerbtn`, with
+  **no `min-width`** — the old 111 px floor existed to match the Session log
+  capsule and only left dead space once the label became `Subagents`.
+- No refresh button and no "2s refresh" caption: the 2 s poll is the only
+  refresh path.
 
 ## Repo hygiene
 
