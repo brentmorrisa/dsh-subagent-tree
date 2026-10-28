@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-10-27
+
+### Fixed
+
+- **The browser half did not work on DSH desktop 0.2.1-rc.3.** The client API
+  moved under it; five call sites were ported and the plugin now declares
+  `uiWorkspace` in its client `inject` list:
+  - the current session is read from the Workspace selection store
+    (`uiWorkspace.selection`), because `SessionListState` no longer carries a
+    `current` field and a root-scoped overlay receives no `sessionId` prop;
+  - context occupancy reads `projectionsBySession[id].values.contextPressure`
+    instead of the removed `projectionValues`;
+  - row clicks navigate with `uiWorkspace.openSession(...)` instead of the
+    removed `sessions.open` / `sessions.openSubagent`;
+  - the post-failure refresh calls `sessions.refreshProjections(id)` instead of
+    the removed `sessions.refreshSubagents`.
+- The idle grace is also stamped on first observation when no `agent/status`
+  stamp exists, and idle stamps for disposed agents are pruned each poll.
+
+### Changed
+
+- Install instructions rewritten for the desktop app: the profile is `desktop`
+  (not `web`), there is no `dsh` on `PATH`, and the app's own launcher at
+  `resources/runtime/cli/bin/dsh.cmd` is the entry point. Verification no
+  longer relies on `--dump-config`, which the desktop profile refuses.
+
 ## [1.0.0] — 2026-09-09
 
 ### Added

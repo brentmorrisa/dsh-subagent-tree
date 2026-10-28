@@ -84,7 +84,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['sessions', 'slots'],
+      inject: ['sessions', 'slots', 'uiWorkspace'],
       apply: function (ctx) {
         const slots = ctx.get('slots')
         if (slots === undefined) return
@@ -198,9 +198,26 @@ window.__ModuleLoader__.load({
         const Entry = function (propsRaw) {
           const useSessionsProp = propsRaw && propsRaw.useSessions
           const open = usePanelOpen()
-          const current = (typeof useSessionsProp === 'function')
-            ? useSessionsProp(function (s) { return s.current })
-            : undefined
+          // The current session comes from the Workspace selection store: the
+          // session-list snapshot no longer carries a `current` field, and this
+          // overlay is root-scoped so it receives no `sessionId` slot prop.
+          const selectionPair = React.useState(function () {
+            const ws = ctx.get('uiWorkspace')
+            const store = ws === undefined ? undefined : ws.selection
+            return store === undefined ? {} : store.getSnapshot()
+          })
+          const selection = selectionPair[0]
+          const setSelection = selectionPair[1]
+          React.useEffect(function () {
+            const ws = ctx.get('uiWorkspace')
+            const store = ws === undefined ? undefined : ws.selection
+            if (store === undefined) return undefined
+            setSelection(store.getSnapshot())
+            return store.subscribe(function () {
+              setSelection(store.getSnapshot())
+            })
+          }, [])
+          const current = selection === undefined || selection === null ? undefined : selection.sessionId
 
           const anchorState = React.useState(undefined)
           const anchor = anchorState[0]
@@ -264,10 +281,11 @@ window.__ModuleLoader__.load({
             ? useSessionsProp(function (s) {
               const list = wantedKey !== '' ? wantedKey.split(',') : []
               if (list.length === 0) return ''
+              const projections = s.projectionsBySession || {}
               let out = ''
               for (const id of list) {
-                const row = s.byId && s.byId[id]
-                const p = (row !== undefined && row.projectionValues !== undefined) ? row.projectionValues.contextPressure : undefined
+                const row = projections[id]
+                const p = (row !== undefined && row.values !== undefined) ? row.values.contextPressure : undefined
                 if (p !== undefined) {
                   const used = (p.projectedTokens !== undefined && p.projectedTokens !== null) ? p.projectedTokens : p.pressureTokens
                   if (used !== undefined && used !== null && p.contextWindow !== undefined && p.contextWindow !== null && p.contextWindow > 0) {
@@ -373,30 +391,31 @@ window.__ModuleLoader__.load({
 
           const selectAnchor = function () {
             if (anchor === undefined) return
-            const sessions = ctx.get('sessions')
-            if (sessions === undefined) return
+            const ws = ctx.get('uiWorkspace')
+            if (ws === undefined || typeof ws.openSession !== 'function') return
             try {
-              sessions.open(anchor)
-            } catch (err) {
-              try {
-                const addr = (typeof sessions.subagentAddress === 'function') ? sessions.subagentAddress(anchor) : undefined
-                if (addr) sessions.openSubagent(addr)
-              } catch (err2) {}
-            }
+              ws.openSession(anchor)
+            } catch (err) {}
           }
 
           const selectNode = function (n) {
             if (n.kind === 'diagnostic') return
             const sessions = ctx.get('sessions')
-            if (sessions === undefined) return
+            const ws = ctx.get('uiWorkspace')
+            if (ws === undefined || typeof ws.openSession !== 'function') return
             const address = { parentSessionId: n.parentId, childSessionId: n.id, mode: n.mode }
             try {
-              sessions.openSubagent(address)
+              ws.openSession(address)
             } catch (err) {
               try {
-                sessions.refreshSubagents(n.parentId).then(function () {
-                  try { sessions.openSubagent(address) } catch (err2) {}
-                })
+                // The address resolves from the parent's subagent catalog; a
+                // just-started child may only become addressable after the
+                // projection refresh lands.
+                if (sessions !== undefined && typeof sessions.refreshProjections === 'function') {
+                  sessions.refreshProjections(n.parentId).then(function () {
+                    try { ws.openSession(address) } catch (err2) {}
+                  })
+                }
               } catch (err3) {}
             }
           }

@@ -40,18 +40,24 @@ client.js      BROWSER half — runs in the web GUI page
 
 ## Install targets (deploy frequency: low)
 
-- **Package home:** `<DSH_HOME>/profiles/web/node_modules/dsh-subagent-tree/`
-  where `<DSH_HOME>` is `$DSH_HOME` (normally `%USERPROFILE%\.dsh`). Deploy
-  with `dsh plugin --profile web add <this-repo-path>` — pnpm installs from
-  the repo, and the package's `dsh.bundle.patch` makes that command self-wire
-  the composition row into the profile's bundle layer list. With a local path
-  spec, pnpm records a `link:` dependency: `node_modules/dsh-subagent-tree`
-  is a live symlink to this repo, so no sync step exists locally. Registry or
-  git-spec installs (what GitHub users get) materialize copies. A manual copy
-  deploy remains possible (README fallback) but then needs the manual row
-  below.
+- **Package home:** `<DSH_HOME>/profiles/desktop/node_modules/dsh-subagent-tree/`
+  where `<DSH_HOME>` is `$DSH_HOME` (normally `%USERPROFILE%\.dsh`). The
+  desktop app reserves the single `desktop` profile: it refuses to boot or
+  dump config for it, and only the `plugin` subcommand is allowed — through
+  the app's own launcher, which passes the desktop flag that permits it. There
+  is **no `dsh` on `PATH`**; on Windows the launcher is
+  `"%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"`,
+  so deploy with
+  `<launcher> plugin --profile desktop add <this-repo-path>`. pnpm installs
+  from the repo, and the package's `dsh.bundle.patch` makes that command
+  self-wire the composition row into the profile's bundle layer list. With a
+  local path spec, pnpm records a `link:` dependency:
+  `node_modules/dsh-subagent-tree` is a live junction to this repo, so no sync
+  step exists locally. Registry or git-spec installs (what GitHub users get)
+  materialize copies. A manual copy deploy remains possible (README fallback)
+  but then needs the manual row below.
 - **Composition row (manual fallback only):** one entry in
-  `<DSH_HOME>/profiles/web/cordis.patch.yml`:
+  `<DSH_HOME>/profiles/desktop/cordis.patch.yml`:
 
   ```yaml
   - insert:
@@ -61,21 +67,21 @@ client.js      BROWSER half — runs in the web GUI page
   Never let this co-exist with the bundle form on one profile — double
   insertion double-mounts the panel and throws `webserver: duplicate exact
   route "/sgtree/snapshot"` at boot.
-- **Activation:** restart the DSH process, then refresh the browser page.
-  Host-half changes need the restart; client-bundle changes need restart +
-  refresh (the boot graph re-hashes the bundle at process start).
+- **Activation:** a newly added bundle row usually hot-applies its host half,
+  but an edit to `index.js` needs a full app restart, and a client-bundle
+  change needs a page reload (the boot graph re-hashes at process start).
 
 **Development loop (this profile's dependency is a live `link:`):** edit the
-repo → restart DSH → refresh. The symlink makes the repo the installed copy;
-no sync step is needed. A registry or git-spec install would be snapshotted —
-relevant only if someone edits against a copied install. `node --check` runs
-from the repo directly; the restart re-hashes the client bundle.
+repo → reload the page for `client.js`, restart the app for `index.js`. The
+junction makes the repo the installed copy; no sync step is needed. A registry
+or git-spec install would be snapshotted — relevant only if someone edits
+against a copied install. `node --check` runs from the repo directly.
 
 ### Bundle form (adopted)
 
 The package declares `"dsh": { "bundle": { "patch": "lib/patch.yml" } }` and
-ships its insert row inside itself, so `dsh plugin --profile web add <github
-or path spec>` installs AND composes on any profile in one command. The patch
+ships its insert row inside itself, so `dsh plugin --profile desktop add
+<github or path spec>` installs AND composes on any profile in one command. The patch
 file shares the profile patch grammar (`insert:` lists, id-targeted config
 overrides, disables). Publishing notes: `private` is intentionally absent;
 `files` whitelists `index.js`, `client.js`, `lib/patch.yml` (README, LICENSE,
@@ -89,8 +95,12 @@ row, remove it before enabling the bundle form (warning above).
    directory so `type: module` is honored for the ESM file).
 2. `node --input-type=module -e "const m = await
    import('<abs>/index.js'); console.log(m.inject, typeof m.apply)"`.
-3. `node <dsh>/lib/bin.js web --dump-config` — must name
-   `dsh-subagent-tree` exactly once, warn nothing.
+3. Composition check — `--dump-config` is **refused for the `desktop`
+   profile** by design. Either install into a throwaway non-desktop profile and
+   run `dsh --profile <scratch> --dump-config` (must name `dsh-subagent-tree`
+   exactly once and warn nothing), or probe the running app:
+   `GET http://127.0.0.1:<port>/sgtree/snapshot?rootId=<sessionId>` must answer
+   JSON carrying `revision`; 404 means the host half did not activate.
 4. After deploy + restart + refresh: host console marker
    `[sgtree] host half ready: /sgtree/snapshot route registered`; browser
    devtools marker `[sgtree] client half ready`; a "Subagent tree" capsule
@@ -119,6 +129,12 @@ row, remove it before enabling the bundle form (warning above).
   services (`agents`, `sessionQuery`) MUST be re-read per request with
   `ctx.get` (they can mount after this row applies; a one-time capture at
   apply-time can freeze as `undefined`).
+- **Client half services:** inject `['sessions', 'slots', 'uiWorkspace']`.
+  `uiWorkspace.selection` is the only source of the current session (the
+  session-list snapshot has no `current` field, and the `shell.overlay` slot is
+  root-scoped so it gets no `sessionId` prop); navigation is
+  `uiWorkspace.openSession(idOrAddress)`, and a stale address is refreshed with
+  `sessions.refreshProjections(parentId)`.
 - **Route registration** goes through `ctx.webServer.register({ kind: 'exact',
   path: '/sgtree/snapshot', handler })` inside `ctx.effect(...)` so the row
   is unregistered when the effect disposes. Handler signature is Node raw
@@ -149,10 +165,15 @@ Client-side, these are deliberate; do not "clean them up":
 - Dots: solid grey for finished and for recent finishers; `Finished [X]`
   rows single-level indented at the top of their section; revealed subtrees
   render collapsed; `X` = that session's hidden finished count.
-- Finished threshold: 10 minutes (`RECENT_MS`). Terminated/interrupted
-  continuable children (agents left resident `idle`, no end event) drain to
-  Finished after `IDLE_STALE_MS` = 2 min, via the `agent/status` idle map;
-  end stamps are first-seen-only (`subagent/end` repeatedly per run/epoch —
+- Finished threshold: 10 minutes (`RECENT_MS`). Resident `idle` agents drain to
+  Finished after `IDLE_STALE_MS` = 2 min via the `agent/status` idle map — the
+  event payload carries the agent because the loop dispatches through
+  `agentEvents`, whose `fused()` spreads `{ ...payload, agent }`. When no stamp
+  exists (agent already idle at mount, or a build that omits the identity) the
+  host stamps on first observation instead, and prunes stamps for agents that
+  are gone. Note that in the desktop build a finished or interrupted child
+  disposes its agent, so this grace is mostly the root's.
+  End stamps are first-seen-only (`subagent/end` repeatedly per run/epoch —
   never let a repeat re-pin "recent").
 - Running mode (footer toggle): auto-expand while any descendant is live,
   auto-collapse when none is; 10 s client-observed finisher linger;

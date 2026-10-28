@@ -90,21 +90,41 @@ export function apply(ctx) {
     }
 
     const liveStatus = new Map();
+    const liveIds = new Set();
     if (agentsSvc !== undefined) {
       try {
         const live = agentsSvc.list();
         for (const agent of live) {
           if (agent && agent.id) {
             const key = String(agent.id);
+            liveIds.add(key);
             if (agent.status === 'running') {
+              if (idleMap.has(key)) idleMap.delete(key);
               liveStatus.set(key, 'working');
             } else if (agent.status === 'idle') {
-              const lastIdle = idleMap.get(key);
-              liveStatus.set(key, (lastIdle !== undefined && (now - lastIdle) < IDLE_STALE_MS) ? 'idle' : 'inactive');
+              // `agent/status` fuses the agent into its payload (the loop
+              // dispatches through agentEvents), so idleMap normally holds the
+              // exact moment the agent went idle. When there is no stamp yet —
+              // the agent was already idle before this row mounted, or a build
+              // omits the identity — stamp on first sight instead, so the
+              // two-minute drain still starts from an observation rather than
+              // never. A stamp is never refreshed, so it drains once and stays.
+              let lastIdle = idleMap.get(key);
+              if (lastIdle === undefined) {
+                lastIdle = now;
+                idleMap.set(key, lastIdle);
+              }
+              liveStatus.set(key, (now - lastIdle) < IDLE_STALE_MS ? 'idle' : 'inactive');
             } else {
+              if (idleMap.has(key)) idleMap.delete(key);
               liveStatus.set(key, 'inactive');
             }
           }
+        }
+        // Forget stamps whose agent is no longer live, so the map cannot grow
+        // without bound across a long session.
+        for (const key of Array.from(idleMap.keys())) {
+          if (!liveIds.has(key)) idleMap.delete(key);
         }
       } catch (err) {
         console.error('[sgtree] agent list failed', err);

@@ -32,68 +32,131 @@ the subagent registry and serves a snapshot route, and a browser half
   is a "Subagent tree" capsule in the session header, immediately to the
   left of the "Session log" button.
 
+### How a row's status is derived
+
+The host half never trusts the browser for liveness; it asks the harness on
+every poll and returns one of four states:
+
+- **working** — the live agent registry reports the session `running`.
+- **idle** — the agent is resident and `idle`, for up to two minutes. The
+  timestamp comes from the `agent/status` event, whose dispatcher fuses the
+  agent into the payload, so the id is always available. If an agent is
+  already idle when the panel mounts (or a build ever omits that identity),
+  the first observation is stamped instead, so the grace still elapses rather
+  than being skipped.
+- **inactive** — no live agent, or an idle agent whose two-minute grace has
+  expired.
+- **recently finished** — a grey dot for ten minutes after `subagent/end`
+  stamps the session, before it tucks into that section's `Finished` row.
+
+A stamp is never refreshed, so a drained agent stays inactive until it runs
+again, and stamps for disposed agents are dropped each poll.
+
 ## Requirements
 
-- DeepSeek Harness with a **web profile** (the browser GUI).
-- The plugin consumes the harness's own `subagents`, `webServer`, `sessions`,
-  and `slots` services — no other setup.
+- DeepSeek Harness with the browser GUI. Verified against the **DSH desktop app
+  0.2.1-rc.3**, whose profile is named `desktop`.
+- The plugin consumes the harness's own services — no other setup:
+  - host half: `subagents`, `webServer`
+  - browser half: `sessions`, `slots`, `uiWorkspace`
+- **The `web` profile no longer exists in the desktop app.** Older DSH
+  releases ran as a Node service with a free-named profile (`dsh web`); the
+  desktop app reserves the single `desktop` profile and manages it itself.
 
 ## Install
 
-`dsh plugin` installs the package into the web profile (pnpm-managed, so it
-survives profile reinstalls) and — because the package declares its own bundle
-patch (`dsh.bundle.patch`) — automatically joins its composition row into the
-profile's bundle layer list. Nothing else to edit.
+The desktop app ships DSH as an Electron bundle, so there is **no `dsh` on
+`PATH`** — use the launcher inside the installation. On Windows:
 
-**From GitHub (one command):**
+**From a local clone or path** (what this checkout is installed as, and the
+form verified on 0.2.1-rc.3):
 
-```sh
-dsh plugin --profile web add github:brentmorrisa/dsh-subagent-tree
+```bat
+"%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add C:\path\to\dsh-subagent-tree
 ```
 
-**From a local clone or path:**
+A path install records a `link:` dependency, so the checkout itself becomes the
+installed copy: edit it, restart, and the change is live.
 
-```sh
-dsh plugin --profile web add C:\path\to\dsh-subagent-tree
+**From GitHub:**
+
+```bat
+"%LOCALAPPDATA%\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add github:brentmorrisa/dsh-subagent-tree
 ```
 
-Either way: **restart the DSH process**, then **refresh the browser page**.
+A `github:` install materializes a snapshot copy in the profile rather than
+linking, so it installs whatever version `main` carries. **It needs 1.0.1 or
+later** — 1.0.0 predates the client-API port recorded in
+[`CHANGELOG.md`](CHANGELOG.md), and its panel will not render on the desktop
+app. If `main` is still at 1.0.0, use the path form (or push the fixes first),
+and re-install after any future fix since the copy does not track the
+repository.
 
-**Manual fallback** (no pnpm, no plugin command):
+Either form is a single command because the package declares its own bundle
+patch (`dsh.bundle.patch` → `lib/patch.yml`): `dsh plugin` installs the package
+into `%USERPROFILE%\.dsh\profiles\desktop` (pnpm-managed, so it survives
+profile reinstalls) **and** reconciles its composition row into the profile's
+`dsh.profile.bundles`. Nothing else to edit.
 
-Copy `package.json`, `index.js`, and `client.js` into
-`%USERPROFILE%\.dsh\profiles\web\node_modules\dsh-subagent-tree\`, then add
-one row to `%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml`:
+Then **fully quit and reopen the app**, and **refresh the page**. The host half
+usually hot-applies as soon as the bundle row lands; the browser bundle is
+picked up on the next page load. A change to `index.js` needs the app restart.
+
+Notes for the desktop profile:
+
+- `dsh --profile desktop` (boot, `--dump-config`, …) is refused by design —
+  the desktop profile is reserved for the app. Only the `plugin` subcommand is
+  allowed, and only through the app's own launcher, which passes the desktop
+  flag that permits it.
+- Do not also add the `insert` row to `cordis.patch.yml` — a manual row plus
+  the bundle form double-mounts the panel and throws
+  `webserver: duplicate exact route "/sgtree/snapshot"` at boot.
+
+**Manual fallback** (only if the app launcher cannot be used):
+
+Copy `package.json`, `index.js`, `client.js`, and `lib/patch.yml` into
+`%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-subagent-tree\`, then add
+one row to `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml`:
 
 ```yaml
 - insert:
   - name: dsh-subagent-tree
 ```
 
-Then restart + refresh as above. Do not combine this manual row with the
-bundle form on one profile: double insertion double-mounts the panel and
-throws `webserver: duplicate exact route "/sgtree/snapshot"` at boot.
-
 ## Verification
 
-```sh
-node <dsh>/lib/bin.js web --dump-config
-```
+The profile's composed tree cannot be dumped on the desktop app
+(`--dump-config` is refused), so verify against the running app instead:
 
-must list `- name: dsh-subagent-tree` exactly once and print no patch
-warnings. In the browser devtools console, a successful boot logs
-`[sgtree] client half ready`; the host side logs
-`[sgtree] host half ready: /sgtree/snapshot route registered`.
+- **Route** — the host half serves `GET /sgtree/snapshot?rootId=<sessionId>` on
+  the GUI origin (the port the app opened, e.g. `http://127.0.0.1:60446`). On
+  0.2.1-rc.3 a plain request answers without extra credentials, unlike the
+  app's own pages: a live host returns JSON with `revision`, `root`, and
+  `nodes`, and an unknown id answers
+  `{"revision":N,"error":"session \"…\" not found"}`. A 404 means the host half
+  did not activate.
+- **Browser console** — a successful boot logs `[sgtree] client half ready`,
+  and the host logs
+  `[sgtree] host half ready: /sgtree/snapshot route registered`.
+- **UI** — a "Subagent tree" capsule appears in the session header immediately
+  left of the "Session log" button; the sidebar footer button opens the panel
+  too.
 
 ## Diagnostics
 
-- `web boot: N entries did not activate` naming this package — check that the
-  browser tree provides `sessions` and `slots`, or read the import error on
-  this package's console entry.
+- `web boot: N entries did not activate` naming this package — the host tree is
+  missing `subagents` or `webServer`, or the browser tree is missing
+  `sessions`/`slots`/`uiWorkspace`; read the import error on this package's
+  console entry.
 - Panel shows `snapshot request failed: HTTP 404` — the host half did not
   activate (`subagents` or `webServer` missing in the host tree).
-- Pill missing entirely — the client bundle did not register; look for the
-  import error and the `client half ready` marker.
+- Capsule missing entirely — the client bundle did not register. Check the
+  console for an import error, and that the manifest still declares
+  `dsh.client.platform: "web"` and exports **both** `./client` and
+  `./package.json` (that second export is required for discovery and its
+  absence fails silently).
+- `duplicate exact route "/sgtree/snapshot"` — both the bundle row and a manual
+  `cordis.patch.yml` row are present; remove one.
 
 ## Screenshot
 
