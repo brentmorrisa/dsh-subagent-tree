@@ -298,6 +298,9 @@ window.__ModuleLoader__.load({
           }
 
           const cacheBox = snapshotCache
+          // Ref on the tree root: the poller reads its visibility so a hidden
+          // tab costs nothing (see `load`).
+          const rootRef = React.useRef(null)
 
           const liveSeenBox = React.useState(function () { return new Map() })[0]
           const endObsBox = React.useState(function () { return new Map() })[0]
@@ -376,6 +379,15 @@ window.__ModuleLoader__.load({
             let busy = false
             const load = function () {
               if (busy === true) return
+              // Do no work at all while the tree cannot be seen: the dock host
+              // is `visibility:hidden` when the column is collapsed, the pane
+              // is hidden, or the window is minimised/backgrounded. The timer
+              // keeps ticking (a no-op) so revealing the column resumes on the
+              // next tick without any subscription or teardown.
+              if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+              const el = rootRef.current
+              if (el !== null && el !== undefined && typeof el.checkVisibility === 'function'
+                && el.checkVisibility({ visibilityProperty: true }) === false) return
               busy = true
               snapshotOf(anchor)
                 .then(function (payload) {
@@ -728,7 +740,7 @@ window.__ModuleLoader__.load({
             bodyChildren = pieces
           }
 
-          return React.createElement('div', { className: 'sgp-tab' },
+          return React.createElement('div', { className: 'sgp-tab', ref: rootRef },
             React.createElement('div', { className: 'sgp-body' }, bodyChildren),
             React.createElement('div', { className: 'sgp-footerline' },
               React.createElement('button', {

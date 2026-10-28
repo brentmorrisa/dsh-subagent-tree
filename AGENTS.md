@@ -219,7 +219,14 @@ Client-side, these are deliberate; do not "clean them up":
   **no `min-width`** — the old 111 px floor existed to match the Session log
   capsule and only left dead space once the label became `Subagents`.
 - No refresh button and no "2s refresh" caption: the 2 s poll is the only
-  refresh path.
+  refresh path. The poller is **visibility-gated**: `load()` returns before the
+  fetch when `document.visibilityState === 'hidden'`, or when the tree root
+  fails `checkVisibility({ visibilityProperty: true })` (collapsed column,
+  hidden pane). The timer keeps ticking as a cheap no-op, so revealing the
+  column or restoring the window resumes on the next tick with no subscription
+  and no teardown. Do **not** replace this with `sidebarRight.isExpanded()`: a
+  tab dragged into a floating pane is visible while `expanded` is false, and
+  the element check covers both.
 - **Per-session view state.** Collapsed sections, `Finished` filters and
   Running mode live in `uiStates` — a Map keyed by the watched session id —
   outside the component, with the snapshot cache beside it. The dock remounts

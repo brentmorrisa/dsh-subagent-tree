@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] — 2026-10-27
+
+### Changed
+
+- **The 2 s poller does no work while the tree cannot be seen.** It returns
+  before the fetch when the page is hidden (minimised or backgrounded) or when
+  the tree root fails `checkVisibility({ visibilityProperty: true })` — which
+  covers the collapsed column and hidden panes. Collapsing the sidebar used to
+  keep a 1,800-request/hour poll running off-frame; it now costs nothing. The
+  timer itself keeps ticking as a cheap no-op, so revealing the column or
+  restoring the window resumes on the next tick, with no subscription and no
+  teardown. The element check (rather than `sidebarRight.isExpanded()`) is
+  deliberate: a tab in a floating pane is visible while `expanded` is false.
+
 ## [1.0.4] — 2026-10-27
 
 ### Fixed
